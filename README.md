@@ -4,12 +4,12 @@
 <!-- badges: start -->
 
 ![GitHub R package
-version](https://img.shields.io/github/r-package/v/epiforecasts/ringbp)
-[![R-CMD-check](https://github.com/epiforecasts/ringbp/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/epiforecasts/ringbp/actions/workflows/R-CMD-check.yaml)
+version](https://img.shields.io/github/r-package/v/joshwlambert/ringbp)
+[![R-CMD-check](https://github.com/joshwlambert/ringbp/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/joshwlambert/ringbp/actions/workflows/R-CMD-check.yaml)
 [![Codecov test
-coverage](https://codecov.io/gh/epiforecasts/ringbp/branch/main/graph/badge.svg)](https://app.codecov.io/gh/epiforecasts/ringbp?branch=main)
+coverage](https://codecov.io/gh/joshwlambert/ringbp/branch/main/graph/badge.svg)](https://app.codecov.io/gh/joshwlambert/ringbp?branch=main)
 ![GitHub
-contributors](https://img.shields.io/github/contributors/epiforecasts/ringbp)
+contributors](https://img.shields.io/github/contributors/joshwlambert/ringbp)
 [![License:
 MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 <!-- badges: end -->
@@ -29,7 +29,7 @@ The current development version of *ringbp* can be installed from
 
 ``` r
 if(!require("pak")) install.packages("pak")
-pak::pak("epiforecasts/ringbp")
+pak::pak("joshwlambert/ringbp")
 ```
 
 ## Quick start
@@ -40,6 +40,9 @@ scenario:
 
 ``` r
 library("ringbp")
+#> Registered S3 method overwritten by 'future':
+#>   method               from      
+#>   all.equal.connection parallelly
 library("ggplot2")
 
 res <- scenario_sim(
@@ -53,8 +56,8 @@ res <- scenario_sim(
   r0community = 2.5, ## non-isolated individuals have R0 of 2.5
   disp.com = 0.16, ## dispersion parameter in the community
   disp.iso = 1, ## dispersion  parameter of those isolated
-  delay_shape = 1.651524, ## shape parameter of time from onset to isolation
-  delay_scale = 4.287786, ## scale parameter of time from onset to isolation
+  onset_to_isolation = \(x) stats::rweibull(n = x, shape = 1.651524, scale = 4.287786), ## time from onset to isolation
+  incubation_period = \(x) stats::rweibull(n = x, shape = 2.322737, scale = 6.492272), ## incubation period
   k = 0, ## skew of generation interval to be beyond onset of symptoms
   quarantine = FALSE ## whether quarantine is in effect
 )
@@ -77,5 +80,30 @@ ggplot(
 
 ``` r
 extinct_prob(res, cap_cases = 4500)
-#> [1] 0.7
+#> [1] 0.8
 ```
+
+## Contributors
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+
+All contributions to this project are gratefully acknowledged using the
+[`allcontributors` package](https://github.com/ropensci/allcontributors)
+following the [all-contributors](https://allcontributors.org)
+specification. Contributions of any kind are welcome!
+
+<a href="https://github.com/joshwlambert/ringbp/commits?author=seabbs">seabbs</a>,
+<a href="https://github.com/joshwlambert/ringbp/commits?author=sbfnk">sbfnk</a>,
+<a href="https://github.com/joshwlambert/ringbp/commits?author=jhellewell14">jhellewell14</a>,
+<a href="https://github.com/joshwlambert/ringbp/commits?author=timcdlucas">timcdlucas</a>,
+<a href="https://github.com/joshwlambert/ringbp/commits?author=amygimma">amygimma</a>,
+<a href="https://github.com/joshwlambert/ringbp/commits?author=joshwlambert">joshwlambert</a>,
+<a href="https://github.com/joshwlambert/ringbp/commits?author=Bisaloo">Bisaloo</a>,
+<a href="https://github.com/joshwlambert/ringbp/commits?author=actions-user">actions-user</a>,
+<a href="https://github.com/joshwlambert/ringbp/commits?author=pearsonca">pearsonca</a>
+
+<!-- markdownlint-enable -->
+<!-- prettier-ignore-end -->
+<!-- ALL-CONTRIBUTORS-LIST:END -->
