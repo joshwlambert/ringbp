@@ -21,6 +21,9 @@ or starting cases which are all assumed to be missed.}
 times to sample the incubation period (i.e. length of the \code{function}
 output).}
 
+\item{k}{a \code{numeric} scalar: skew parameter for sampling the serial
+interval from the incubation period}
+
 \item{onset_to_isolation}{a \code{function}: a random number generating
 \code{function} that accepts a single \code{integer} argument specifying the
 length of the \code{function} output.}
