@@ -4,12 +4,12 @@
 <!-- badges: start -->
 
 ![GitHub R package
-version](https://img.shields.io/github/r-package/v/epiforecasts/ringbp)
-[![R-CMD-check](https://github.com/epiforecasts/ringbp/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/epiforecasts/ringbp/actions/workflows/R-CMD-check.yaml)
+version](https://img.shields.io/github/r-package/v/joshwlambert/ringbp)
+[![R-CMD-check](https://github.com/joshwlambert/ringbp/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/joshwlambert/ringbp/actions/workflows/R-CMD-check.yaml)
 [![Codecov test
-coverage](https://codecov.io/gh/epiforecasts/ringbp/branch/main/graph/badge.svg)](https://app.codecov.io/gh/epiforecasts/ringbp?branch=main)
+coverage](https://codecov.io/gh/joshwlambert/ringbp/branch/main/graph/badge.svg)](https://app.codecov.io/gh/joshwlambert/ringbp?branch=main)
 ![GitHub
-contributors](https://img.shields.io/github/contributors/epiforecasts/ringbp)
+contributors](https://img.shields.io/github/contributors/joshwlambert/ringbp)
 [![License:
 MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 <!-- badges: end -->
@@ -29,7 +29,7 @@ The current development version of *ringbp* can be installed from
 
 ``` r
 if(!require("pak")) install.packages("pak")
-pak::pak("epiforecasts/ringbp")
+pak::pak("joshwlambert/ringbp")
 ```
 
 ## Quick start
@@ -43,16 +43,16 @@ library("ringbp")
 library("ggplot2")
 
 res <- scenario_sim(
-  n.sim = 10, ## 10 simulations
-  num.initial.cases = 1, ## one initial case in each of the simulations
-  prop.asym = 0, ## no asymptomatic infections
-  prop.ascertain = 0.2, ## 20% probability of ascertainment by contact tracing
+  n = 10, ## 10 simulations
+  initial_cases = 1, ## one initial case in each of the simulations
+  prop_asymptomatic = 0, ## no asymptomatic infections
+  prop_ascertain = 0.2, ## 20% probability of ascertainment by contact tracing
   cap_cases = 4500, ## don't simulate beyond 4500 infections
   cap_max_days = 350, ## don't simulate beyond 350 days
-  r0isolated = 0.5, ## isolated individuals have R0 of 0.5
-  r0community = 2.5, ## non-isolated individuals have R0 of 2.5
-  disp.com = 0.16, ## dispersion parameter in the community
-  disp.iso = 1, ## dispersion  parameter of those isolated
+  r0_isolated = 0.5, ## isolated individuals have R0 of 0.5
+  r0_community = 2.5, ## non-isolated individuals have R0 of 2.5
+  disp_community = 0.16, ## dispersion parameter in the community
+  disp_isolated = 1, ## dispersion  parameter of those isolated
   onset_to_isolation = \(x) stats::rweibull(n = x, shape = 1.651524, scale = 4.287786), ## time from onset to isolation
   incubation_period = \(x) stats::rweibull(n = x, shape = 2.322737, scale = 6.492272), ## incubation period
   k = 0, ## skew of generation interval to be beyond onset of symptoms
@@ -91,28 +91,15 @@ All contributions to this project are gratefully acknowledged using the
 following the [all-contributors](https://allcontributors.org)
 specification. Contributions of any kind are welcome!
 
-### Code
-
-<a href="https://github.com/epiforecasts/ringbp/commits?author=seabbs">seabbs</a>,
-<a href="https://github.com/epiforecasts/ringbp/commits?author=sbfnk">sbfnk</a>,
-<a href="https://github.com/epiforecasts/ringbp/commits?author=jhellewell14">jhellewell14</a>,
-<a href="https://github.com/epiforecasts/ringbp/commits?author=timcdlucas">timcdlucas</a>,
-<a href="https://github.com/epiforecasts/ringbp/commits?author=amygimma">amygimma</a>,
-<a href="https://github.com/epiforecasts/ringbp/commits?author=joshwlambert">joshwlambert</a>,
-<a href="https://github.com/epiforecasts/ringbp/commits?author=Bisaloo">Bisaloo</a>,
-<a href="https://github.com/epiforecasts/ringbp/commits?author=actions-user">actions-user</a>
-
-### Issue Authors
-
-<a href="https://github.com/epiforecasts/ringbp/issues?q=is%3Aissue+author%3Apearsonca">pearsonca</a>,
-<a href="https://github.com/epiforecasts/ringbp/issues?q=is%3Aissue+author%3Asophiemeakin">sophiemeakin</a>
-
-### Issue Contributors
-
-<a href="https://github.com/epiforecasts/ringbp/issues?q=is%3Aissue+commenter%3Athimotei">thimotei</a>,
-<a href="https://github.com/epiforecasts/ringbp/issues?q=is%3Aissue+commenter%3Aadamkucharski">adamkucharski</a>,
-<a href="https://github.com/epiforecasts/ringbp/issues?q=is%3Aissue+commenter%3Adcadam">dcadam</a>,
-<a href="https://github.com/epiforecasts/ringbp/issues?q=is%3Aissue+commenter%3Ajamesmbaazam">jamesmbaazam</a>
+<a href="https://github.com/joshwlambert/ringbp/commits?author=seabbs">seabbs</a>,
+<a href="https://github.com/joshwlambert/ringbp/commits?author=sbfnk">sbfnk</a>,
+<a href="https://github.com/joshwlambert/ringbp/commits?author=jhellewell14">jhellewell14</a>,
+<a href="https://github.com/joshwlambert/ringbp/commits?author=timcdlucas">timcdlucas</a>,
+<a href="https://github.com/joshwlambert/ringbp/commits?author=joshwlambert">joshwlambert</a>,
+<a href="https://github.com/joshwlambert/ringbp/commits?author=amygimma">amygimma</a>,
+<a href="https://github.com/joshwlambert/ringbp/commits?author=Bisaloo">Bisaloo</a>,
+<a href="https://github.com/joshwlambert/ringbp/commits?author=pearsonca">pearsonca</a>,
+<a href="https://github.com/joshwlambert/ringbp/commits?author=actions-user">actions-user</a>
 
 <!-- markdownlint-enable -->
 <!-- prettier-ignore-end -->
