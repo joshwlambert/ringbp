@@ -2,7 +2,7 @@
 #'
 #' @param inc_samp a positive `numeric` vector: samples from the incubation
 #'   period distribution
-#' @param k a `numeric` scalar: skew parameter for sampling the serial
+#' @param alpha a `numeric` scalar: skew parameter for sampling the serial
 #'   interval from the incubation period
 #'
 #' @return a `numeric` vector of equal length to the vector input to `inc_samp`
@@ -10,16 +10,37 @@
 #' @importFrom sn rsn
 #'
 #' @examples
-#' inf_fn(inc_samp = c(1, 2, 3, 4, 1), k = 2)
-inf_fn <- function(inc_samp, k) {
+#' inf_fn(inc_samp = c(1, 2, 3, 4, 1), alpha = 2)
+inf_fn <- function(inc_samp, alpha) {
 
   out <- sn::rsn(n = length(inc_samp),
                  xi = inc_samp,
                  omega = 2,
-                 alpha = k)
+                 alpha = alpha)
 
   return(pmax(1, out))
 }
+
+#' Calculate skew normal alpha parameter from proportion of presymptomatic
+#' transmission
+#'
+#' @param prop_presymptomatic a `numeric` scale probability (between 0 and 1
+#'   inclusive): proportion of transmission that occurs before symptom onset.
+#'
+#' @return A `numeric` scalar: The `$minimum` output from [optimise()] to find
+#'   the best `alpha` parameter to get the desired proportion of presymptomatic
+#'   transmission.
+#' @keywords internal
+prop_presymptomatic_to_alpha <- function(prop_presymptomatic) {
+  objective <- function(alpha) {
+    # fix x, xi and omega for optimisation
+    p_current <- sn::psn(x = 0, xi = 0, omega = 2, alpha = alpha)
+    return((p_current - prop_presymptomatic)^2)
+  }
+  # alpha domain is (-Inf, Inf), approximate with large numbers
+  optimise(f = objective, interval = c(-1e5, 1e5))$minimum
+}
+
 
 #' Calculate proportion of runs that have controlled outbreak
 #'
