@@ -105,7 +105,7 @@ parameter_sweep <- function(scenarios,
       r0_community = x$r0_community,
       r0_asymptomatic = ifelse(
         "asymptomatic_R0" %in% names(scenarios), x$asymptomatic_R0, x$r0_community),
-      k = x$k,
+      prop_presymptomatic = x$prop_presymptomatic,
       onset_to_isolation = x$onset_to_isolation[[1]],
       incubation_period = x$incubation_period[[1]],
       prop_ascertain = x$prop_ascertain,
