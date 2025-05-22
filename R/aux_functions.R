@@ -53,6 +53,10 @@ extinct_prob <- function(outbreak_df_week, cap_cases, week_range = 12:16) {
   checkmate::assert_data_frame(outbreak_df_week)
   checkmate::assert_number(cap_cases, lower = 0)
   checkmate::assert_numeric(week_range)
+  stopifnot(
+    "`week_range` not in simulated outbreak data" =
+      all(week_range %in% outbreak_df_week$week)
+  )
 
   n <- max(outbreak_df_week$sim)
 
