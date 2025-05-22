@@ -115,6 +115,8 @@ detect_extinct <- function(outbreak_df_week, week_range = 12:16) {
   checkmate::assert_integerish(week_range)
 
   cap_cases <- attr(outbreak_df_week, which = "cap_cases")
+  checkmate::assert_numeric(cap_cases, lower = 1)
+
   outbreak_df_week <- as.data.table(outbreak_df_week)
   outbreak_df_week <- outbreak_df_week[week %in% week_range]
   outbreak_df_week[, list(
