@@ -9,13 +9,12 @@
 #' @return `TRUE` if all the checks pass or an error thrown by a \pkg{checkmate}
 #' `assert_*()` function if one or more of the inputs is invalid.
 #' @keywords internal
-check_outbreak_input <- function() {
-  ## get name of the calling function as a character string
-  func <- deparse(as.list(sys.call(-1))[[1]])
-  func <- gsub(pattern = "ringbp::", replacement = "", x = func)
-  func <- match.arg(func, choices = c(
-    "outbreak_setup", "outbreak_step", "outbreak_model", "scenario_sim"
-  ))
+check_outbreak_input <- function(func = c("outbreak_setup",
+                                          "outbreak_step",
+                                          "outbreak_model",
+                                          "scenario_sim")) {
+  func <- match.arg(func)
+
   args <- as.list(parent.frame())
 
   checkmate::assert_function(args$incubation_period)

@@ -51,7 +51,7 @@ outbreak_model <- function(initial_cases,
                            cap_max_days, cap_cases,
                            quarantine = FALSE) {
 
-  check_outbreak_input()
+  check_outbreak_input(func = "outbreak_model")
 
   # Set initial values for loop indices
   total_cases <- initial_cases

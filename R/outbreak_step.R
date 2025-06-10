@@ -86,7 +86,7 @@ outbreak_step <- function(case_data,
                           prop_ascertain, prop_asymptomatic,
                           quarantine = FALSE) {
 
-  check_outbreak_input()
+  check_outbreak_input(func = "outbreak_step")
 
   # For each case in case_data, draw new_cases from a negative binomial distribution
   # with an R0 and dispersion dependent on if isolated=TRUE
