@@ -10,7 +10,6 @@ reference:
     - inf_fn
   - subtitle: Loop wrappers for scenario modelling
     contents:
-    - parameter_sweep
     - scenario_sim
   - title: Post-processing
     contents:
