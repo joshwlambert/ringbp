@@ -4,17 +4,13 @@
 \alias{parameter_sweep}
 \title{Sweep across parameters}
 \usage{
-parameter_sweep(scenarios, sim_fn, samples = 1)
+parameter_sweep(scenarios, n = 1)
 }
 \arguments{
 \item{scenarios}{a \code{data.frame}: containing all gridded scenarios - see the
 examples for the required structure.}
 
-\item{sim_fn}{a \code{function}: The vectorised model
-simulation function - see the examples for usage.}
-
-\item{samples}{a positive \code{integer} scalar: the number of samples to take.
-Defaults to \code{1}.}
+\item{n}{a positive \code{integer} scalar: number of simulations to run}
 }
 \value{
 A nested \code{data.table} containing the parameters for each scenario and a nested list of output
@@ -43,10 +39,16 @@ scenarios <- data.table(
       k = c(1, 0.88)
     )),
     r0_community = c(1.1, 1.5),
+    r0_isolated = 0,
+    disp_isolated = 1,
+    disp_asymptomatic = 0.16,
+    disp_community = 0.16
     prop_asymptomatic = c(0, 0.1),
     prop_ascertain = seq(0, 1, 0.25),
     initial_cases = c(5, 10),
-    quarantine = FALSE
+    quarantine = FALSE,
+    cap_max_days = 365,
+    cap_cases = 5000
   )
 )
 
@@ -64,17 +66,6 @@ scenarios[, scenario :=  1:.N]
 incub <- \(x) rweibull(n = x, shape = 1.65, scale = 4.28)
 scenarios[, incubation_period := rep(list(incub), .N)]
 
-## Parameterise fixed paramters
-sim_with_params <- purrr::partial(
-  ringbp::scenario_sim,
-  cap_max_days = 365,
-  cap_cases = 5000,
-  r0_isolated = 0,
-  disp_isolated = 1,
-  disp_asymptomatic = 0.16,
-  disp_community = 0.16
-)
-
 ## parameter_sweep uses the future_lapply() function
 ## Default is to run sequntially on a single core
 # future::plan("sequential")
@@ -85,8 +76,7 @@ sim_with_params <- purrr::partial(
 ## Run parameter sweep
 sweep_results <- parameter_sweep(
   scenarios,
-  sim_fn = sim_with_params,
-  samples = 1
+  n = 1
 )
 
 sweep_results
