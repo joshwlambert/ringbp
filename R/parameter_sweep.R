@@ -32,16 +32,16 @@
 #'       k = c(1, 0.88)
 #'     )),
 #'     r0_community = c(1.1, 1.5),
+#'     r0_isolated = 0,
+#'     disp_isolated = 1,
+#'     disp_asymptomatic = 0.16,
+#'     disp_community = 0.16
 #'     prop_asymptomatic = c(0, 0.1),
 #'     prop_ascertain = seq(0, 1, 0.25),
 #'     initial_cases = c(5, 10),
 #'     quarantine = FALSE,
 #'     cap_max_days = 365,
-#'     cap_cases = 5000,
-#'     r0_isolated = 0,
-#'     disp_isolated = 1,
-#'     disp_asymptomatic = 0.16,
-#'     disp_community = 0.16
+#'     cap_cases = 5000
 #'   )
 #' )
 #'
@@ -79,30 +79,33 @@ parameter_sweep <- function(scenarios,
   checkmate::assert_data_frame(scenarios)
   checkmate::assert_number(n, lower = 1, finite = TRUE)
 
-  safe_sim_fn <- purrr::safely(scenario_sim)
-
   ## create list column
   scenario_sims <- scenarios[, list(data = list(.SD)), by = scenario]
   ## Randomise the order of scenarios - helps share the load across cores
   scenario_sims <- scenario_sims[sample(.N), ]
+
   ## Run simulations
-  scenario_sims[, sims := future_lapply(
-    data,
-    \(x) safe_sim_fn(
+  scenario_sims[, sims := future_lapply(data, \(x, n) {
+    scenario_sim(
       n = n,
       initial_cases = x$initial_cases,
       r0_community = x$r0_community,
-      r0_asymptomatic = ifelse(
-        "asymptomatic_R0" %in% names(scenarios), x$asymptomatic_R0, x$r0_community),
+      r0_isolated = x$r0_isolated,
+      disp_isolated = x$disp_isolated,
+      disp_asymptomatic = x$disp_asymptomatic,
+      disp_community = x$disp_community,
       k = x$k,
       onset_to_isolation = x$onset_to_isolation[[1]],
       incubation_period = x$incubation_period[[1]],
       prop_ascertain = x$prop_ascertain,
       quarantine = x$quarantine,
-      prop_asymptomatic = x$prop_asymptomatic
-    )[[1]],
-    future.scheduling = 20,
-    future.seed = TRUE
+      prop_asymptomatic = x$prop_asymptomatic,
+      cap_max_days = x$cap_max_days,
+      cap_cases = x$cap_cases,
+    )
+  },
+  n = n,
+  future.seed = TRUE
   )]
 
   return(scenario_sims[])
