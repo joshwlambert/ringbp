@@ -6,8 +6,7 @@
 #'
 #' @param scenarios a `data.frame`: containing all gridded scenarios - see the
 #'   examples for the required structure.
-#' @param samples a positive `integer` scalar: the number of samples to take.
-#'   Defaults to `1`.
+#' @inheritParams scenario_sim
 #'
 #' @return A nested `data.table` containing the parameters for each scenario and a nested list of output
 #' from [scenario_sim()].
@@ -70,15 +69,15 @@
 #' ## Run parameter sweep
 #' sweep_results <- parameter_sweep(
 #'   scenarios,
-#'   samples = 1
+#'   n = 1
 #' )
 #'
 #' sweep_results
 parameter_sweep <- function(scenarios,
-                            samples = 1) {
+                            n = 1) {
 
   checkmate::assert_data_frame(scenarios)
-  checkmate::assert_number(samples, lower = 1, finite = TRUE)
+  checkmate::assert_number(n, lower = 1, finite = TRUE)
 
   safe_sim_fn <- purrr::safely(scenario_sim)
 
@@ -90,7 +89,7 @@ parameter_sweep <- function(scenarios,
   scenario_sims[, sims := future_lapply(
     data,
     \(x) safe_sim_fn(
-      n = samples,
+      n = n,
       initial_cases = x$initial_cases,
       r0_community = x$r0_community,
       r0_asymptomatic = ifelse(
