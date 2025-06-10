@@ -48,11 +48,10 @@ Depends:
 Imports: 
     checkmate,
     data.table,
-    future.apply,
-    purrr,
     sn
 Suggests:
     future,
+    future.apply,
     knitr,
     rmarkdown,
     roxyglobals (>= 1.0.0),
