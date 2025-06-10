@@ -53,9 +53,12 @@ Imports:
     sn
 Suggests:
     future,
+    knitr,
+    rmarkdown,
     roxyglobals (>= 1.0.0),
     testthat
 URL: https://epiforecasts.io/ringbp, https://github.com/epiforecasts/ringbp
 BugReports: https://github.com/epiforecasts/ringbp/issues
 Config/roxyglobals/filename: globals.R
 Config/roxyglobals/unique: FALSE
+VignetteBuilder: knitr
