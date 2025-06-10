@@ -8,8 +8,6 @@
 #'   examples for the required structure.
 #' @param samples a positive `integer` scalar: the number of samples to take.
 #'   Defaults to `1`.
-#' @param sim_fn a `function`: The vectorised model
-#'   simulation function - see the examples for usage.
 #'
 #' @return A nested `data.table` containing the parameters for each scenario and a nested list of output
 #' from [scenario_sim()].
@@ -38,7 +36,13 @@
 #'     prop_asymptomatic = c(0, 0.1),
 #'     prop_ascertain = seq(0, 1, 0.25),
 #'     initial_cases = c(5, 10),
-#'     quarantine = FALSE
+#'     quarantine = FALSE,
+#'     cap_max_days = 365,
+#'     cap_cases = 5000,
+#'     r0_isolated = 0,
+#'     disp_isolated = 1,
+#'     disp_asymptomatic = 0.16,
+#'     disp_community = 0.16
 #'   )
 #' )
 #'
@@ -56,17 +60,6 @@
 #' incub <- \(x) rweibull(n = x, shape = 1.65, scale = 4.28)
 #' scenarios[, incubation_period := rep(list(incub), .N)]
 #'
-#' ## Parameterise fixed paramters
-#' sim_with_params <- purrr::partial(
-#'   ringbp::scenario_sim,
-#'   cap_max_days = 365,
-#'   cap_cases = 5000,
-#'   r0_isolated = 0,
-#'   disp_isolated = 1,
-#'   disp_asymptomatic = 0.16,
-#'   disp_community = 0.16
-#' )
-#'
 #' ## parameter_sweep uses the future_lapply() function
 #' ## Default is to run sequntially on a single core
 #' # future::plan("sequential")
@@ -77,20 +70,17 @@
 #' ## Run parameter sweep
 #' sweep_results <- parameter_sweep(
 #'   scenarios,
-#'   sim_fn = sim_with_params,
 #'   samples = 1
 #' )
 #'
 #' sweep_results
 parameter_sweep <- function(scenarios,
-                            sim_fn,
                             samples = 1) {
 
   checkmate::assert_data_frame(scenarios)
-  checkmate::assert_function(sim_fn)
   checkmate::assert_number(samples, lower = 1, finite = TRUE)
 
-  safe_sim_fn <- purrr::safely(sim_fn)
+  safe_sim_fn <- purrr::safely(scenario_sim)
 
   ## create list column
   scenario_sims <- scenarios[, list(data = list(.SD)), by = scenario]
