@@ -95,14 +95,14 @@ presymptomatic_transmission_to_alpha <- function(presymptomatic_transmission) {
 #'   sim = sim_opts(cap_max_days = 350, cap_cases = 4500)
 #' )
 #' extinct_prob(res)
-extinct_prob <- function(outbreak_df_week, week_range = 12:16) {
+extinct_prob <- function(scenario, week_range = 12:16) {
 
-  checkmate::assert_data_frame(outbreak_df_week)
+  checkmate::assert_data_frame(scenario)
   checkmate::assert_numeric(week_range)
 
-  n <- max(outbreak_df_week$sim)
+  n <- max(scenario$sim)
 
-  extinct_runs <- detect_extinct(outbreak_df_week, week_range)
+  extinct_runs <- detect_extinct(scenario, week_range)
   out <-  sum(extinct_runs$extinct) / n
 
   return(out)
@@ -112,7 +112,7 @@ extinct_prob <- function(outbreak_df_week, week_range = 12:16) {
 #' Calculate whether outbreaks went extinct or not
 #'
 #' @details
-#' The data passed to `outbreak_df_week` has to be produced by [scenario_sim()].
+#' The data passed to `scenario` has to be produced by [scenario_sim()].
 #' It cannot be produced by [outbreak_model()] as it requires the `sim` column,
 #' which is only appended in [scenario_sim()].
 #'
@@ -123,8 +123,7 @@ extinct_prob <- function(outbreak_df_week, week_range = 12:16) {
 #' from subsetting the `data.table`).
 #'
 #' @author Joel Hellewell
-#' @param outbreak_df_week a `data.table`: weekly cases produced by the
-#'   outbreak model
+#' @param scenario a `data.table`: weekly cases output by [scenario_sim()]
 #' @param week_range a positive `integer` vector: giving the (zero indexed)
 #'   week range to test for whether an extinction occurred. Default is `12:16`.
 #' @importFrom data.table as.data.table fifelse
@@ -155,17 +154,17 @@ extinct_prob <- function(outbreak_df_week, week_range = 12:16) {
 #'   interventions = intervention_opts(quarantine = FALSE),
 #'   sim = sim_opts(cap_max_days = 350, cap_cases = 4500)
 #' )
-#' detect_extinct(outbreak_df_week = res)
-detect_extinct <- function(outbreak_df_week, week_range = 12:16) {
+#' detect_extinct(scenario = res)
+detect_extinct <- function(scenario, week_range = 12:16) {
 
-  checkmate::assert_data_frame(outbreak_df_week)
+  checkmate::assert_data_frame(scenario)
   checkmate::assert_integerish(week_range)
 
-  cap_cases <- attr(outbreak_df_week, which = "cap_cases")
+  cap_cases <- attr(scenario, which = "cap_cases")
 
-  outbreak_df_week <- as.data.table(outbreak_df_week)
-  outbreak_df_week <- outbreak_df_week[week %in% week_range]
-  out <- outbreak_df_week[, list(
+  scenario <- as.data.table(scenario)
+  scenario <- scenario[week %in% week_range]
+  out <- scenario[, list(
     extinct = fifelse(all(weekly_cases == 0 & cumulative < cap_cases), 1, 0)
   ), by = sim]
   return(out[])
