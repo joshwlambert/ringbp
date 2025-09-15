@@ -4,11 +4,16 @@
 \alias{plot.ringbp_scenario_sim}
 \title{Plot function for \pkg{ringbp} simulated outbreak from \code{\link[=scenario_sim]{scenario_sim()}}}
 \usage{
-\method{plot}{ringbp_scenario_sim}(x, ...)
+\method{plot}{ringbp_scenario_sim}(x, type = c("spaghetti", "ribbon"), ...)
 }
 \arguments{
 \item{x}{a \code{data.table} with class \verb{<ringbp_scenario_sim>}: the outbreak
 simulated by the \pkg{ringbp} model, returned by \code{\link[=scenario_sim]{scenario_sim()}}}
+
+\item{type}{a \code{character} string scalar: control the type of plot, either
+\code{spaghetti} (default) which plots one line for each simulated outbreak,
+or \code{ribbon} which plots a mean and 95\% confidence interval ribbon across
+all of the simulated outbreaks.}
 
 \item{...}{Extra arguments, not used. Will warn if extra arguments are
 supplied}
@@ -49,4 +54,7 @@ res <- scenario_sim(
   sim = sim
 )
 plot(res)
+
+# plot as mean and CI
+plot(res, type = "ribbon")
 }

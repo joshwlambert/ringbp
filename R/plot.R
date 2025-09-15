@@ -2,10 +2,15 @@
 #'
 #' @param x a `data.table` with class `<ringbp_scenario_sim>`: the outbreak
 #'   simulated by the \pkg{ringbp} model, returned by [scenario_sim()]
+#' @param type a `character` string scalar: control the type of plot, either
+#'   `spaghetti` (default) which plots one line for each simulated outbreak,
+#'   or `ribbon` which plots a mean and 95% confidence interval ribbon across
+#'   all of the simulated outbreaks.
 #' @param ... Extra arguments, not used. Will warn if extra arguments are
 #'   supplied
 #'
 #' @return A `ggplot` object
+#' @autoglobal
 #' @export
 #'
 #' @examples
@@ -38,15 +43,38 @@
 #'   sim = sim
 #' )
 #' plot(res)
-plot.ringbp_scenario_sim <- function(x, ...) {
+#'
+#' # plot as mean and CI
+#' plot(res, type = "ribbon")
+plot.ringbp_scenario_sim <- function(x,
+                                     type = c("spaghetti", "ribbon"),
+                                     ...) {
   chkDots(...)
-  ggplot2::ggplot(data = x) +
-    ggplot2::geom_line(
-      mapping = ggplot2::aes(
-        x = week, y = cumulative, col = as.factor(sim)
-      ),
-      show.legend = FALSE
-    ) +
-    ggplot2::scale_y_continuous("Cumulative number of cases") +
-    ggplot2::theme_bw()
+  type <- match.arg(type)
+  if (type == "spaghetti") {
+    ggplot2::ggplot(data = x) +
+      ggplot2::geom_line(
+        mapping = ggplot2::aes(
+          x = week, y = cumulative, col = as.factor(sim)
+        ),
+        show.legend = FALSE
+      ) +
+      ggplot2::scale_y_continuous("Cumulative number of cases") +
+      ggplot2::theme_bw()
+  } else {
+    x[, mean := mean(cumulative), by = week]
+    x[, lower_ci := mean(cumulative) - 1.96 * (stats::sd(cumulative) / sqrt(.N)),
+      by = week]
+    x[, upper_ci := mean(cumulative) + 1.96 * (stats::sd(cumulative) / sqrt(.N)),
+      by = week]
+    x[, c("lower_ci", "upper_ci") := lapply(.SD, function(x) pmax(x, 0)),
+      .SDcols = c("lower_ci", "upper_ci")]
+    ggplot2::ggplot(data = x) +
+      ggplot2::geom_line(mapping = ggplot2::aes(x = week, y = mean)) +
+      ggplot2::geom_ribbon(
+        mapping = ggplot2::aes(x = week, ymin = lower_ci, ymax = upper_ci), alpha = 0.2
+      ) +
+      ggplot2::scale_y_continuous("Mean cumulative number of cases") +
+      ggplot2::theme_bw()
+  }
 }
