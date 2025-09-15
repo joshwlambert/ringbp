@@ -81,5 +81,7 @@ scenario_sim <- function(n,
   # bind output together and add simulation index
   res <- data.table::rbindlist(res, idcol = "sim")
 
+  class(res) <- c("ringbp_scenario_sim", class(res))
+
   return(res[])
 }
