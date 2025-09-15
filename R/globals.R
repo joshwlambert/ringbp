@@ -21,5 +21,10 @@ utils::globalVariables(c(
   "infector_isolation_time", # <outbreak_step>
   "infector_asymptomatic", # <outbreak_step>
   "missed", # <outbreak_step>
+  "week", # <plot.ringbp_scenario_sim>
+  "cumulative", # <plot.ringbp_scenario_sim>
+  "sim", # <plot.ringbp_scenario_sim>
+  "lower_ci", # <plot.ringbp_scenario_sim>
+  "upper_ci", # <plot.ringbp_scenario_sim>
   NULL
 ))
