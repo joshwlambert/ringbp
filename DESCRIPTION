@@ -48,7 +48,9 @@ Depends:
 Imports: 
     checkmate,
     data.table,
-    sn
+    ggplot2,
+    sn,
+    stats
 Suggests:
     future,
     future.apply,
