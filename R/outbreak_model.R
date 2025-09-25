@@ -91,7 +91,7 @@ outbreak_model <- function(initial_cases,
     cases_in_gen_vect <- c(cases_in_gen_vect, out[[3]])
     total_cases <- nrow(case_data)
     latest_onset <- max(case_data$onset)
-    extinct <- all(case_data$isolated)
+    extinct <- all(case_data$sampled)
   }
 
   # Prepare output, group into weeks
