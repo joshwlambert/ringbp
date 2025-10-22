@@ -77,7 +77,12 @@ outbreak_step <- function(case_data,
   checkmate::assert_class(interventions, "ringbp_intervention_opts")
 
   # case_data is modified by reference and generation times are returned
-  gt <- sample_offspring(case_data, offspring)
+  gt <- sample_offspring(
+    case_data = case_data,
+    offspring = offspring,
+    alpha = event_probs$alpha,
+    latent_period = delays$latent_period
+  )
 
   # Select cases that have generated any new cases
   new_case_data <- case_data[new_cases > 0 & !sampled]
@@ -103,12 +108,7 @@ outbreak_step <- function(case_data,
   prob_samples <- new_case_data[, list(
     # time when new cases were exposed, a draw from generation time based on
     # infector's onset
-    exposure = incubation_to_generation_time(
-      symptom_onset_time = rep(onset, new_cases),
-      exposure_time = rep(exposure, new_cases),
-      alpha = event_probs$alpha,
-      latent_period = delays$latent_period
-    ),
+    exposure = gt,
     # records the infector of each new person
     infector = rep(caseid, new_cases),
     # records when infector was isolated
