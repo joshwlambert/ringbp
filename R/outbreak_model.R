@@ -139,10 +139,21 @@ outbreak_model <- function(initial_cases,
     cases_in_gen_vect <- NA_real_
   }
 
+  # weights for mean effective R
+  w <- switch(
+    sim$rt_calc,
+    mean = rep(1, length(effective_r0_vect)),
+    linear_weighted_mean = 1:length(effective_r0_vect),
+    exp_weighted_mean = 0.5 * (1 - 0.5)^((length(effective_r0_vect):1) - 1)
+  )
+
   # Add effective R0
-  weekly_cases <- weekly_cases[, `:=`(effective_r0 = mean(effective_r0_vect,
-                                                          na.rm = TRUE),
-                                        cases_per_gen = list(cases_in_gen_vect))]
+  weekly_cases <- weekly_cases[
+    , `:=`(effective_r0 = stats::weighted.mean(
+      effective_r0_vect, w = w, na.rm = TRUE
+    ),
+    cases_per_gen = list(cases_in_gen_vect))
+  ]
 
   setattr(weekly_cases, name = "extinct", value = all(case_data$sampled))
 
