@@ -182,6 +182,9 @@ intervention_opts <- function(quarantine = FALSE, test_sensitivity = 1) {
 #'   this many days is reached.
 #' @param cap_cases a positive `integer` scalar: number of cumulative cases at
 #'   which the branching process (simulation) was terminated
+#' @param rt_calc a `character` string: the method to calculate the effective
+#'   reproduction number. Either `"mean"` (default), `"linear_weighted_mean"`,
+#'   or `"exponential_weighted_mean"`.
 #'
 #' @return A `list` with class `<ringbp_sim_opts>`.
 #' @export
@@ -195,14 +198,18 @@ intervention_opts <- function(quarantine = FALSE, test_sensitivity = 1) {
 #'   cap_max_days = 140,
 #'   cap_cases = 1000
 #' )
-sim_opts <- function(cap_max_days = 350, cap_cases  = 5000) {
+sim_opts <- function(cap_max_days = 350, cap_cases  = 5000,
+                     rt_calc = c("mean", "linear_weighted_mean",
+                                 "exp_weighted_mean")) {
 
   checkmate::assert_int(cap_max_days, lower = 1)
   checkmate::assert_int(cap_cases, lower = 1)
+  rt_calc <- match.arg(rt_calc)
 
   opts <- list(
     cap_max_days = cap_max_days,
-    cap_cases = cap_cases
+    cap_cases = cap_cases,
+    rt_calc = rt_calc
   )
 
   class(opts) <- "ringbp_sim_opts"

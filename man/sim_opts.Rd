@@ -4,7 +4,11 @@
 \alias{sim_opts}
 \title{Create a list of simulation control options for the \pkg{ringbp} model}
 \usage{
-sim_opts(cap_max_days = 350, cap_cases = 5000)
+sim_opts(
+  cap_max_days = 350,
+  cap_cases = 5000,
+  rt_calc = c("mean", "linear_weighted_mean", "exp_weighted_mean")
+)
 }
 \arguments{
 \item{cap_max_days}{a positive \code{integer} scalar: stop the simulation when
@@ -12,6 +16,10 @@ this many days is reached.}
 
 \item{cap_cases}{a positive \code{integer} scalar: number of cumulative cases at
 which the branching process (simulation) was terminated}
+
+\item{rt_calc}{a \code{character} string: the method to calculate the effective
+reproduction number. Either \code{"mean"} (default), \code{"linear_weighted_mean"},
+or \code{"exponential_weighted_mean"}.}
 }
 \value{
 A \code{list} with class \verb{<ringbp_sim_opts>}.
