@@ -162,16 +162,32 @@ event_prob_opts <- function(asymptomatic,
 #'   and 1 inclusive): the test sensitivity (i.e. probability of a true
 #'   positive result). Individuals that are tested and get a false negative
 #'   are not isolated and their contacts are not traced.
+#' @param test_capacity a `numeric` scalar: the number of tests available per
+#'   day in the simulation. Once the number of tests is exceeded on a given day
+#'   all individuals are symptomatic not tested and assumed to not isolate.
+#'   Default is unlimited testing (`Inf`).
 #'
 #' @return A `list` with class `<ringbp_intervention_opts>`.
 #' @export
 #'
 #' @examples
 #' intervention_opts(quarantine = FALSE)
-intervention_opts <- function(quarantine = FALSE, test_sensitivity = 1) {
+intervention_opts <- function(quarantine = FALSE,
+                              test_sensitivity = 1,
+                              test_capacity = Inf) {
   checkmate::assert_logical(quarantine, any.missing = FALSE, len = 1)
   checkmate::assert_number(test_sensitivity, lower = 0, upper = 1)
-  opts <- list(quarantine = quarantine, test_sensitivity = test_sensitivity)
+  if (is.finite(test_capacity)) {
+    checkmate::assert_integerish(
+      test_capacity, lower = 0, any.missing = FALSE, len = 1,
+    )
+    test_capacity <- as.integer(test_capacity)
+  }
+  opts <- list(
+    quarantine = quarantine,
+    test_sensitivity = test_sensitivity,
+    test_capacity = test_capacity
+  )
   class(opts) <- "ringbp_intervention_opts"
   opts
 }

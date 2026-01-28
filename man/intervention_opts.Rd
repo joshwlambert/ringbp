@@ -4,7 +4,11 @@
 \alias{intervention_opts}
 \title{Create a list of intervention settings to run the \pkg{ringbp} model}
 \usage{
-intervention_opts(quarantine = FALSE, test_sensitivity = 1)
+intervention_opts(
+  quarantine = FALSE,
+  test_sensitivity = 1,
+  test_capacity = Inf
+)
 }
 \arguments{
 \item{quarantine}{a \code{logical} scalar: whether quarantine is in effect, if
@@ -15,6 +19,11 @@ intervention_opts(quarantine = FALSE, test_sensitivity = 1)
 and 1 inclusive): the test sensitivity (i.e. probability of a true
 positive result). Individuals that are tested and get a false negative
 are not isolated and their contacts are not traced.}
+
+\item{test_capacity}{a \code{numeric} scalar: the number of tests available per
+day in the simulation. Once the number of tests is exceeded on a given day
+all individuals are symptomatic not tested and assumed to not isolate.
+Default is unlimited testing (\code{Inf}).}
 }
 \value{
 A \code{list} with class \verb{<ringbp_intervention_opts>}.
