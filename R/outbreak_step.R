@@ -131,12 +131,21 @@ outbreak_step <- function(case_data,
     onset := exposure + delays$incubation_period(.N)
   ]
 
+  tested <- sample_testing(
+    prob_samples = prob_samples,
+    interventions = interventions
+  )
+
+  # updated test_quota in interventions and make tested atomic
+  interventions <- tested$interventions
+  tested <- tested$tested
+
   # draw a sample for missing and test result
   prob_samples[
     infector_asymptomatic == FALSE,
     missed := runif(.N) > event_probs$symptomatic_ascertained
   ][
-    asymptomatic == FALSE,
+    tested,
     test_positive := as.logical(
       rbinom(n = .N, size = 1, prob = interventions$test_sensitivity)
     )
@@ -186,6 +195,7 @@ outbreak_step <- function(case_data,
   list(
     cases = case_data,
     effective_r0 = effective_r0,
-    cases_in_gen = cases_in_gen
+    cases_in_gen = cases_in_gen,
+    interventions = interventions
   )
 }

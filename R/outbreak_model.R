@@ -67,6 +67,10 @@ outbreak_model <- function(initial_cases,
   # Preallocate
   effective_r0_vect <- c()
   cases_in_gen_vect <- c()
+  interventions$test_quota <- data.table(
+    day = 0L,
+    tests_remaining = interventions$test_capacity
+  )
 
 
   # Model loop
@@ -83,6 +87,7 @@ outbreak_model <- function(initial_cases,
     case_data <- out[[1]]
     effective_r0_vect <- c(effective_r0_vect, out[[2]])
     cases_in_gen_vect <- c(cases_in_gen_vect, out[[3]])
+    interventions <- out$interventions
   }
 
   # only warn if non-zero latent period and any transmission
