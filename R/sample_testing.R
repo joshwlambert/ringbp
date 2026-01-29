@@ -28,15 +28,26 @@ sample_testing <- function(prob_samples, interventions) {
   # splice in/replace with test quota for remaining tests from other generations
   test_quota[interventions$test_quota, on = "day", tests_remaining := i.tests_remaining]
 
-  # only symptomatic cases are tested on their symptom onset date
-  onset_day <- prob_samples[asymptomatic == FALSE, floor(onset)]
+  # identify eligible cases
+  eligible <- prob_samples[
+    asymptomatic == FALSE,
+    .(idx = .I, day = as.integer(floor(onset)))
+  ]
 
-  for (i in seq_along(onset_day)) {
-    if (test_quota[day == onset_day[i], tests_remaining] > 0) {
-     test_quota[day == onset_day[i], tests_remaining := tests_remaining - 1]
-   } else {
-     tested[i] <- FALSE
-   }
+  if (nrow(eligible) > 0) {
+    # join quota onto eligible cases
+    eligible[test_quota, on = "day", quota := i.tests_remaining]
+
+    # set individuals over test capacity for each day as FALSE
+    eligible[, tested := seq_len(.N) <= quota, by = day]
+
+    tested[eligible$idx] <- eligible$tested
+
+    inf_per_day <- table(eligible$day)
+    test_quota[
+      day %in% as.numeric(names(inf_per_day)),
+      tests_remaining := pmax(0, tests_remaining - inf_per_day)
+    ]
   }
 
   interventions$test_quota <- test_quota
