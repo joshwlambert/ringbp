@@ -16,7 +16,7 @@ sample_testing <- function(prob_samples, interventions) {
   if (is.infinite(interventions$test_capacity)) {
     return(list(
       tested = tested,
-      interventions = interventions
+      test_quota = interventions$test_quota
     ))
   }
 
@@ -50,10 +50,8 @@ sample_testing <- function(prob_samples, interventions) {
     ]
   }
 
-  interventions$test_quota <- test_quota
-
   list(
     tested = tested,
-    interventions = interventions
+    test_quota = test_quota
   )
 }

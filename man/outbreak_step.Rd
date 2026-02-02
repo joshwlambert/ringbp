@@ -30,11 +30,13 @@ the intervention settings for the \pkg{ringbp} model, returned by
 \code{\link[=intervention_opts]{intervention_opts()}}. Contains one element: \code{quarantine}}
 }
 \value{
-A \code{list} with three elements:
+A \code{list} with four elements:
 \enumerate{
 \item \verb{$cases}: a \code{data.table} with case data
 \item \verb{$effective_r0}: a \code{numeric} with the effective reproduction number
 \item \verb{$cases_in_gen}: a \code{numeric} with the number of new cases in that
+\item \verb{$test_quota}: a two column \code{data.table} with the number of tests
+remaining on each day (column names are \code{day} and \code{tests_remaining}).
 generation
 }
 }

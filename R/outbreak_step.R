@@ -21,10 +21,12 @@
 #' @importFrom data.table data.table rbindlist fcase fifelse copy
 #' @importFrom stats runif rnbinom rbinom
 #'
-#' @return A `list` with three elements:
+#' @return A `list` with four elements:
 #'   1. `$cases`: a `data.table` with case data
 #'   2. `$effective_r0`: a `numeric` with the effective reproduction number
 #'   3. `$cases_in_gen`: a `numeric` with the number of new cases in that
+#'   4. `$test_quota`: a two column `data.table` with the number of tests
+#'   remaining on each day (column names are `day` and `tests_remaining`).
 #'   generation
 #' @autoglobal
 #' @export
@@ -136,8 +138,8 @@ outbreak_step <- function(case_data,
     interventions = interventions
   )
 
-  # updated test_quota in interventions and make tested atomic
-  interventions <- tested$interventions
+  # update test_quota and make tested atomic
+  test_quota <- tested$test_quota
   tested <- tested$tested
 
   # draw a sample for missing and test result
@@ -196,6 +198,6 @@ outbreak_step <- function(case_data,
     cases = case_data,
     effective_r0 = effective_r0,
     cases_in_gen = cases_in_gen,
-    interventions = interventions
+    test_quota = test_quota
   )
 }
