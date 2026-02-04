@@ -13,25 +13,29 @@ sample_testing <- function(prob_samples, interventions) {
   # preallocate testing assuming capacity for everyone
   tested <- rep(TRUE, nrow(prob_samples))
 
-  if (is.infinite(interventions$test_capacity)) {
+  if (all(is.infinite(interventions$test_capacity(prob_samples$onset)))) {
     return(list(
       tested = tested,
       test_quota = interventions$test_quota
     ))
   }
 
+  day_seq <- 0:ceiling(max(prob_samples$onset))
   test_quota <- data.table(
-    day = 0:max(prob_samples$onset),
-    tests_remaining = interventions$test_capacity
+    day = day_seq,
+    tests_remaining = interventions$test_capacity(day_seq)
   )
 
   # splice in/replace with test quota for remaining tests from other generations
   test_quota[interventions$test_quota, on = "day", tests_remaining := i.tests_remaining]
 
-  # identify eligible cases
-  eligible <- prob_samples[
+  # identify eligible cases and index by row number
+  eligible <- copy(prob_samples)
+  eligible <- eligible[
+    , idx := .I
+  ][
     asymptomatic == FALSE,
-    .(idx = .I, day = as.integer(floor(onset)))
+    .(idx = idx, day = as.integer(floor(onset)))
   ]
 
   if (nrow(eligible) > 0) {
@@ -41,6 +45,7 @@ sample_testing <- function(prob_samples, interventions) {
     # set individuals over test capacity for each day as FALSE
     eligible[, tested := seq_len(.N) <= quota, by = day]
 
+    tested[prob_samples$asymptomatic] <- FALSE
     tested[eligible$idx] <- eligible$tested
 
     inf_per_day <- table(eligible$day)

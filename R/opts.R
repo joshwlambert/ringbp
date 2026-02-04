@@ -177,12 +177,25 @@ intervention_opts <- function(quarantine = FALSE,
                               test_capacity = Inf) {
   checkmate::assert_logical(quarantine, any.missing = FALSE, len = 1)
   checkmate::assert_number(test_sensitivity, lower = 0, upper = 1)
-  if (is.finite(test_capacity)) {
+  if (is.function(test_capacity)) {
+    # TODO write this into its own checking function
+    test_capacity_eval <- test_capacity(1)
+    checkmate::assert_integerish(
+      test_capacity_eval, lower = 0, any.missing = FALSE, len = 1,
+    )
+    test_capacity <- Vectorize(FUN = test_capacity)
+  } else if (is.finite(test_capacity)) {
     checkmate::assert_integerish(
       test_capacity, lower = 0, any.missing = FALSE, len = 1,
     )
     test_capacity <- as.integer(test_capacity)
   }
+
+  if (!is.function(test_capacity)) {
+    test_capacity_ <- test_capacity
+    test_capacity <- function(t) rep(test_capacity_, times = length(t))
+  }
+
   opts <- list(
     quarantine = quarantine,
     test_sensitivity = test_sensitivity,

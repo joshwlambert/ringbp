@@ -69,7 +69,7 @@ outbreak_model <- function(initial_cases,
   cases_in_gen_vect <- c()
   interventions$test_quota <- data.table(
     day = 0L,
-    tests_remaining = interventions$test_capacity
+    tests_remaining = interventions$test_capacity(0L)
   )
 
 
