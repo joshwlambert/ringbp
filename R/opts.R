@@ -183,7 +183,27 @@ intervention_opts <- function(quarantine = FALSE,
     checkmate::assert_integerish(
       test_capacity_eval, lower = 0, any.missing = FALSE, len = 1,
     )
-    test_capacity <- Vectorize(FUN = test_capacity)
+    test_capacity_arg <- names(formals(test_capacity))
+    if (length(test_capacity_arg) > 1 || !test_capacity_arg %in% c("t", "N")) {
+      stop(
+        "The function supplied to `test_capacity` in `intervention_opts()` ",
+        "should have one argument. Either `t` for time-dependence or `N` for ",
+        "prevalence-dependence.",
+        call. = FALSE
+      )
+    }
+    test_capacity_ <- test_capacity
+    test_capacity <- function(prob_samples,
+                              arg = test_capacity_arg,
+                              tc = test_capacity_) {
+      if (arg == "N") {
+        return(as.integer(tc(attr(prob_samples, "N"))))
+      } else {
+        day_seq <- 0:ceiling(max(prob_samples$onset))
+        vtc <- Vectorize(tc)
+        return(as.integer(vtc(day_seq)))
+      }
+    }
   } else if (is.finite(test_capacity)) {
     checkmate::assert_integerish(
       test_capacity, lower = 0, any.missing = FALSE, len = 1,
