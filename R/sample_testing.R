@@ -13,7 +13,7 @@ sample_testing <- function(prob_samples, interventions) {
   # preallocate testing assuming capacity for everyone
   tested <- rep(TRUE, nrow(prob_samples))
 
-  if (all(is.infinite(interventions$test_capacity(prob_samples$onset)))) {
+  if (all(is.infinite(interventions$test_capacity(prob_samples)))) {
     return(list(
       tested = tested,
       test_quota = interventions$test_quota
@@ -23,7 +23,7 @@ sample_testing <- function(prob_samples, interventions) {
   day_seq <- 0:ceiling(max(prob_samples$onset))
   test_quota <- data.table(
     day = day_seq,
-    tests_remaining = interventions$test_capacity(day_seq)
+    tests_remaining = interventions$test_capacity(prob_samples)
   )
 
   # splice in/replace with test quota for remaining tests from other generations
