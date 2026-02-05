@@ -67,9 +67,11 @@ outbreak_model <- function(initial_cases,
   # Preallocate
   effective_r0_vect <- c()
   cases_in_gen_vect <- c()
+
+  day_seq <- 0:ceiling(max(case_data$onset))
   interventions$test_quota <- data.table(
-    day = 0L,
-    tests_remaining = interventions$test_capacity(0L)
+    day = day_seq,
+    tests_remaining = interventions$test_capacity(case_data)
   )
 
 
