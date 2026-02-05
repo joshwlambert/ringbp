@@ -63,5 +63,8 @@ outbreak_setup <- function(initial_cases, delays, event_probs) {
     isolated_time := onset + delays$onset_to_isolation(.N)
   ]
 
+  # attach outbreak size attribute for testing capacity
+  data.table::setattr(x = case_data, name = "N", value = nrow(case_data))
+
   case_data[]
 }

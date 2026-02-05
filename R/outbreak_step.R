@@ -133,6 +133,13 @@ outbreak_step <- function(case_data,
     onset := exposure + delays$incubation_period(.N)
   ]
 
+  # attach outbreak size attribute for testing capacity
+  data.table::setattr(
+    x = prob_samples,
+    name = "N",
+    value = nrow(case_data) + nrow(prob_samples)
+  )
+
   tested <- sample_testing(
     prob_samples = prob_samples,
     interventions = interventions
