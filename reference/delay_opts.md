@@ -52,12 +52,12 @@ delay_opts(
 #> $incubation_period
 #> function (n) 
 #> rweibull(n = n, shape = 2.32, scale = 6.49)
-#> <environment: 0x556174591030>
+#> <environment: 0x55d4b0827d50>
 #> 
 #> $onset_to_isolation
 #> function (n) 
 #> rweibull(n = n, shape = 1.65, scale = 4.28)
-#> <environment: 0x556174591030>
+#> <environment: 0x55d4b0827d50>
 #> 
 #> $latent_period
 #> [1] 0
