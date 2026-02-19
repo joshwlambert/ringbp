@@ -1,0 +1,514 @@
+---
+title: "quarantine"
+output: rmarkdown::html_vignette
+bibliography: references.bib
+link-citations: true
+vignette: >
+  %\VignetteIndexEntry{quarantine}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 8,
+  fig.height = 5
+)
+```
+
+## Understanding quarantine in the {ringbp} model
+
+The epidemiological model implemented in the {ringbp} R package contains the option of quarantine. This can be _turned on_ or _off_ (by default it is off, see `intervention_opts()`). 
+
+Quarantine in the model has a relatively simple interpretation and implementation. 
+
+_Interpretation_: If quarantine is turned off, then assuming a infectee is not asymptomatic nor missed by contact tracing, they are isolated at their symptom onset time if after infector isolation time, otherwise at the earlier of the infector and infectee isolation times. So an infectee needs to symptomatic to isolate when quarantine is not active. If quarantine is turned on, the infectee is quarantined/isolated at the earlier of the infector's or infectees isolation time. So the difference when quarantine is active, is infectees can be isolated at their infector's isolation time independent of whether they are showing symptoms. Therefore, when quarantine is active an infectee is isolated at the same time or earlier than if quarantine was not active, and never later.
+
+_Implementation_: The time at which an infectee is isolated is sampled in `outbreak_step()`. Expand the link below to see the code in `outbreak_step()` that does the sampling depending on if quarantine is turned on or off (i.e. `TRUE` or `FALSE`). 
+
+<details>
+<summary>
+Code snippet from `outbreak_step()`
+</summary>
+```r
+prob_samples[, isolated_time := {
+    ref_time <- onset + delays$onset_to_isolation(.N)
+    fcase(
+      # If asymptomatic, never isolated: time is Inf
+      asymptomatic, Inf,
+      # If not asymptomatic, but are missed, isolated at your symptom onset
+      missed, ref_time,
+      # if quarantine is in effect, isolated at the earlier of infector's or
+      # infectee's isolation time
+      rep(interventions$quarantine, .N), pmin(ref_time, infector_isolation_time),
+      # isolated at symptom onset time if after infector isolation time,
+      # otherwise at the earlier of infector and infectee isolation times
+      default = pmin(ref_time, pmax(onset, infector_isolation_time))
+    )
+  }]
+```
+</details>
+
+This is the only part of the {ringbp} model that quarantine affects.
+
+---
+
+In the rest of this vignette we explore the behaviour of quarantine in the {ringbp} model, and investigate the effect on outbreak transmission dynamics under different model parameterisations.
+
+```{r setup}
+library(ringbp)
+library(data.table)
+library(tinyplot)
+```
+
+## Demonstrating the interaction of quarantine with asymptomatics and contact tracing
+
+In the _interpretation_ given above, it stated that both the active and inactive quarantine scenarios required assuming a infectee is not asymptomatic nor missed by contact tracing. This is because if an infectee is asymptomatic they cannot be isolated or quarantined, thus, there is no impact of quarantine. Secondly, isolated or quarantining an infectee requires tracing them; meaning if they are missed by contact tracing they are isolated after a delay from symptom onset, irrespective of whether quarantine is active. 
+
+Here we briefly demonstrate how asymptomatic and missed infectees reduce the effect of quarantine to zero. In a scenario where all cases are asymptomatic the outbreak is identical whether quarantine is active or inactive.
+
+```{r}
+offspring <- offspring_opts(
+  community = \(n) rnbinom(n = n, mu = 2.5, size = 0.16),
+  isolated = \(n) rnbinom(n = n, mu = 0, size = 1),
+  asymptomatic = \(n) rnbinom(n = n, mu = 2.5, size = 0.16)
+)
+delays <- delay_opts(
+  incubation_period = \(n) rweibull(n = n, shape = 2.32, scale = 6.49),
+  onset_to_isolation = \(n) rweibull(n = n, shape = 2.5, scale = 5)
+)
+
+sim <- sim_opts(
+  cap_max_days = 365,
+  cap_cases = 2000
+)
+
+set.seed(1)
+outbreak_no_Q <- scenario_sim(
+  n = 100,
+  initial_cases = 5,
+  offspring = offspring,
+  delays = delays,
+  event_probs = event_prob_opts(
+    asymptomatic = 1,
+    presymptomatic_transmission = 0.3,
+    symptomatic_ascertained = 0.5
+  ),
+  interventions = intervention_opts(quarantine = FALSE),
+  sim = sim
+)
+
+set.seed(1)
+outbreak_Q <- scenario_sim(
+  n = 100,
+  initial_cases = 5,
+  offspring = offspring,
+  delays = delays,
+  event_probs = event_prob_opts(
+    asymptomatic = 1,
+    presymptomatic_transmission = 0.3,
+    symptomatic_ascertained = 0.5
+  ),
+  interventions = intervention_opts(quarantine = TRUE),
+  sim = sim
+)
+
+identical(outbreak_no_Q, outbreak_Q)
+```
+
+The same is true, that quarantine has no effect on disease transmission, if we assume that there is no contact tracing (contact ascertainment = 0%) and infectees isolate after an onset-to-isolation delay.
+
+```{r}
+set.seed(1)
+outbreak_no_Q <- scenario_sim(
+  n = 100,
+  initial_cases = 5,
+  offspring = offspring,
+  delays = delays,
+  event_probs = event_prob_opts(
+    asymptomatic = 0.5,
+    presymptomatic_transmission = 0.3,
+    symptomatic_ascertained = 0
+  ),
+  interventions = intervention_opts(quarantine = FALSE),
+  sim = sim
+)
+
+set.seed(1)
+outbreak_Q <- scenario_sim(
+  n = 100,
+  initial_cases = 5,
+  offspring = offspring,
+  delays = delays,
+  event_probs = event_prob_opts(
+    asymptomatic = 0.5,
+    presymptomatic_transmission = 0.3,
+    symptomatic_ascertained = 0
+  ),
+  interventions = intervention_opts(quarantine = TRUE),
+  sim = sim
+)
+
+identical(outbreak_no_Q, outbreak_Q)
+```
+
+To conclude this section we finish by showing that if some cases are symptomatic, here we assume 50% of cases develop symptoms, and if some contacts are traced, we assume 50% of contacts are traced, then the quarantine influences the outbreak and the resulting outbreak data is different.
+
+```{r}
+set.seed(1)
+outbreak_no_Q <- scenario_sim(
+  n = 100,
+  initial_cases = 5,
+  offspring = offspring,
+  delays = delays,
+  event_probs = event_prob_opts(
+    asymptomatic = 0.5,
+    presymptomatic_transmission = 0.3,
+    symptomatic_ascertained = 0.5
+  ),
+  interventions = intervention_opts(quarantine = FALSE),
+  sim = sim
+)
+
+set.seed(1)
+outbreak_Q <- scenario_sim(
+  n = 100,
+  initial_cases = 5,
+  offspring = offspring,
+  delays = delays,
+  event_probs = event_prob_opts(
+    asymptomatic = 0.5,
+    presymptomatic_transmission = 0.3,
+    symptomatic_ascertained = 0.5
+  ),
+  interventions = intervention_opts(quarantine = TRUE),
+  sim = sim
+)
+
+identical(outbreak_no_Q, outbreak_Q)
+```
+
+## Effect of quarantine in a COVID-like simulation
+
+In the first example we will look at simulating a COVID-19 outbreak, following the parameterisation of @Hellewell2020.
+
+```{r}
+outbreak_no_Q <- scenario_sim(
+  n = 250, 
+  initial_cases = 5, 
+  offspring = offspring_opts(
+    community = \(n) rnbinom(n = n, mu = 2.5, size = 1),
+    isolated = \(n) rnbinom(n = n, mu = 0, size = 1)
+  ), 
+  delays = delay_opts(
+    incubation_period = \(n) rweibull(n = n, shape = 2.322737, scale = 6.492272),
+    onset_to_isolation =\(n) rweibull(n = n , shape = 1.651524, scale = 2.305172)
+  ), 
+  event_probs = event_prob_opts(
+    asymptomatic = 0.1, 
+    presymptomatic_transmission = 0.15, 
+    symptomatic_ascertained = 0.8
+  ), 
+  interventions = intervention_opts(quarantine = FALSE),
+  sim = sim_opts(cap_max_days = 365, cap_cases = 5000)
+)
+```
+
+From this outbreak we can look at the effecive reproduction number ($R_t$) from each of the 100 simulation replicates, as well as the number of generations (in terms of branching process generations) for each simulation replicate ($N_\mathrm{gen}$).
+
+```{r}
+# the Rt is the same for all outbreak weeks so we get it from the last week
+Rt_no_Q <- outbreak_no_Q[week == max(week), effective_r0]
+head(Rt_no_Q)
+```
+
+```{r}
+# the number of generations is the same for all outbreak weeks so we get it from the last week
+n_gen_no_Q <- sapply(outbreak_no_Q[week == max(week), cases_per_gen], length)
+head(n_gen_no_Q)
+```
+
+We can repeat the above simulation, but this time _activate quarantine_. 
+
+```{r}
+outbreak_Q <- scenario_sim(
+  n = 250, 
+  initial_cases = 5, 
+  offspring = offspring_opts(
+    community = \(n) rnbinom(n = n, mu = 2.5, size = 1),
+    isolated = \(n) rnbinom(n = n, mu = 0, size = 1)
+  ), 
+  delays = delay_opts(
+    incubation_period = \(n) rweibull(n = n, shape = 2.322737, scale = 6.492272),
+    onset_to_isolation =\(n) rweibull(n = n , shape = 1.651524, scale = 2.305172)
+  ), 
+  event_probs = event_prob_opts(
+    asymptomatic = 0.1, 
+    presymptomatic_transmission = 0.15, 
+    symptomatic_ascertained = 0.8
+  ), 
+  interventions = intervention_opts(quarantine = TRUE),
+  sim = sim_opts(cap_max_days = 365, cap_cases = 5000)
+)
+```
+
+We can again extract $R_t$ and $N_\mathrm{gen}$.
+
+```{r}
+# the Rt is the same for all outbreak weeks so we get it from the last week
+Rt_Q <- outbreak_Q[week == max(week), effective_r0]
+
+# the number of generations is the same for all outbreak weeks so we get it from the last week
+n_gen_Q <- sapply(outbreak_no_Q[week == max(week), cases_per_gen], length)
+```
+
+And compare these by plotting them as densities:
+
+```{r}
+compare_Q <- data.frame(
+  Rt = c(Rt_no_Q, Rt_Q),
+  n_gen = c(n_gen_no_Q, n_gen_Q),
+  quarantine = c(rep(FALSE, length(Rt_no_Q)), rep(TRUE, length(Rt_Q)))
+)
+```
+
+```{r}
+tinyplot(
+  ~ Rt | quarantine, 
+  data = compare_Q, 
+  type = "density", 
+  fill = "by", 
+  theme = "clean"
+)
+```
+
+```{r}
+tinyplot(
+  ~ n_gen | quarantine, 
+  data = compare_Q, 
+  type = "density", 
+  fill = "by", 
+  theme = "clean"
+)
+```
+
+We can see from these two plots that the effect of quarantine is minimal. 
+
+In the next sections we explore why enabling quarantine in a COVID-19-like outbreak has such a small effect size and under what parameters the model shows a larger effect from quarantine.
+
+## Incubation period and onset-to-isolation delay distributions
+
+When comparing the counterfactual scenarios of quarantine being inactive or active, the timing of symptom onset and the timing of isolation determine whether a infectee is removed from the community after a delay after their symptom onset time, or their infector's isolation time. Here we explore the impact the choice of onset-to-isolation delay has on the impact of quarantine on outbreak disease transmission.
+
+We compare three onset-to-isolation distributional forms: a single value (i.e. Dirac Delta function), a uniform distribution, and a right-skewed distribution (Weibull distribution).
+
+```{r, fig.show="hold", out.width="32%"}
+dirac <- data.table(x = seq(0, 20, by = 0.05))
+dirac[, y := ifelse(x == 10, 1, 0)]
+tinyplot(
+  y ~ x,
+  data = dirac,
+  type = "l", 
+  lwd = 3,
+  xlab = "Time (days)", 
+  ylab = "Probability density",
+  theme = "clean",
+  main = "Dirac Delta Function"
+)
+
+unif <- data.table(x = seq(-5, 25, by = 0.05))
+unif[, y := dunif(x, min = 0, max = 20)]
+tinyplot(
+  y ~ x,
+  data = unif,
+  type = "l",
+  lwd = 3, 
+  col = "darkgreen",
+  xlab = "Time (days)",
+  ylab = "Density",
+  theme = "clean",
+  main = "Uniform Distribution"
+)
+
+weibull <- data.table(x = seq(0, 20, by = 0.05))
+weibull[, y := dweibull(x, shape = 1.7, scale = 5.6)]
+tinyplot(
+  y ~ x,
+  data = weibull,
+  type = "l",
+  lwd = 3, 
+  col = "brown",
+  xlab = "Time (days)", 
+  ylab = "Density",
+  theme = "clean",
+  main = "Weibull Distribution"
+)
+```
+
+Now we compare the effect of quarantine for each of these onset-to-isolation parameterisations.
+
+```{r}
+delays <- list(
+  dirac = delay_opts(
+    incubation_period = \(n) rep(10, n),
+    onset_to_isolation = \(n) rep(10, n)
+  ),
+  unif = delay_opts(
+    incubation_period = \(n) runif(n = n, min = 0, max = 20), 
+    onset_to_isolation = \(n) runif(n = n, min = 0, max = 20)
+  ), 
+  weibull = delay_opts(
+    incubation_period = \(n) rweibull(n = n, shape = 1.7, scale = 5.6),
+    onset_to_isolation = \(n) rweibull(n = n, shape = 1.7, scale = 5.6)
+  )
+)
+
+outbreak <- vector(mode = "list", length = length(delays) * 2)
+idx <- 1
+
+for (i in seq_along(delays)) {
+  for (j in c(FALSE, TRUE)) {
+    message("Running simulation ", i, "... Quarantine: ", j, "\n")
+    outbreak[[idx]] <- scenario_sim(
+      n = 250, 
+      initial_cases = 5, 
+      offspring = offspring_opts(
+        community = \(n) rnbinom(n = n, mu = 2.5, size = 1),
+        isolated = \(n) rnbinom(n = n, mu = 0, size = 1)
+      ), 
+      delays = delays[[i]],
+      event_probs = event_prob_opts(
+        asymptomatic = 0.1, 
+        presymptomatic_transmission = 0.15, 
+        symptomatic_ascertained = 0.8
+      ), 
+      interventions = intervention_opts(quarantine = j),
+      sim = sim_opts(cap_max_days = 365, cap_cases = 5000)
+    )
+    idx <- idx + 1
+  }
+}
+```
+
+We can again extract $R_t$ and $N_\mathrm{gen}$.
+
+```{r}
+# the Rt is the same for all outbreak weeks so we get it from the last week
+Rt <- lapply(outbreak, \(x) x[week == max(week), effective_r0])
+
+# the number of generations is the same for all outbreak weeks so we get it from the last week
+n_gen <- lapply(outbreak, \(x) sapply(x[week == max(week), cases_per_gen], length))
+
+compare_Q_dists <- data.table(
+  quarantine = rep(c(rep(FALSE, 100), rep(TRUE, 100)), 3),
+  delay_type = c(rep("dirac", 200), rep("unif", 200), rep("weibull", 200)), 
+  Rt = unlist(Rt),
+  n_gen = unlist(n_gen)
+)
+```
+
+```{r}
+tinyplot(
+  ~ Rt | quarantine, 
+  data = compare_Q_dists, 
+  type = "density", 
+  fill = "by",
+  facet = ~delay_type,
+  theme = "clean"
+)
+```
+
+```{r}
+tinyplot(
+  ~ n_gen | quarantine, 
+  data = compare_Q_dists, 
+  type = "density", 
+  fill = "by",
+  facet = ~delay_type,
+  xlab = "Number of outbreak generations",
+  theme = "clean"
+)
+```
+
+The $R_t$ plots show that quarantine has a small negative impact, but the more pronounced impact is on number of generations, which is reduced when quarantine is active.
+
+Lastly we compare different values of the incubation period and onset-to-isolation to see how it affects the $R_t$ and $N_\mathrm{gen}$.
+
+```r
+lseq <- function(from, to, length.out) {
+  exp(seq(log(from), log(to), length.out = length.out))
+}
+
+means <- lseq(from = 1, to = 50, length.out = 5)
+params <- expand.grid(incub_mean = means, o2i_mean = means)
+
+Rt <- vector(mode = "list", length = nrow(params))
+for (i in seq_len(nrow(params))) {
+  for (j in c(FALSE, TRUE)) {
+    cat("Running simulation ", i, "... Quarantine: ", j, "\n")
+    incub <-  epiparameter::convert_summary_stats_to_params(
+      "weibull", mean = params$incub_mean[i], sd = 2
+    )
+    o2i <-  epiparameter::convert_summary_stats_to_params(
+      "weibull", mean = params$o2i_mean[i], sd = 2
+    )
+    out <- scenario_sim(
+      n = 100,
+      initial_cases = 5,
+      offspring = offspring_opts(
+        community = \(n) rnbinom(n = n, mu = 2, size = 1),
+        isolated = \(n) rnbinom(n = n, mu = 0, size = 1)
+      ),
+      delays = delay_opts(
+        incubation_period = \(n) rweibull(n = n, shape = incub$shape, scale = incub$scale),
+        onset_to_isolation = \(n) rweibull(n = n, shape = o2i$shape, scale = o2i$scale)
+      ),
+      event_probs = event_prob_opts(
+        asymptomatic = 0.1,
+        presymptomatic_transmission = 0.1,
+        symptomatic_ascertained = 0.8
+      ),
+      interventions = intervention_opts(quarantine = j),
+      sim = sim_opts(cap_max_days = 100, cap_cases = 5000)
+    )
+    if (isFALSE(j)) {
+      # store non-quarantine Rt
+      rt[[i]] <- out[week == max(week), effective_r0]
+    } else {
+      # minus the quarantine Rt
+      rt[[i]] <- rt[[i]] - out[week == max(week), effective_r0]
+    }
+  }  
+}
+
+rt
+rt2 = sapply(rt, median)
+rt2
+
+params$rt <- rt2
+params
+
+ggplot2::ggplot(data = params) +
+  ggplot2::geom_tile(
+    mapping = ggplot2::aes(x = o2i_mean, y = incub_mean, fill = rt)
+  ) +
+  ggplot2::scale_y_continuous(
+    name = "Mean onset-to-isolation delay (days)",
+    transform = "log",
+    breaks = scales::breaks_log(n = 7)
+  ) +
+  ggplot2::scale_x_continuous(
+    name = "Mean incubation period (days)",
+    transform = "log",
+    breaks = scales::breaks_log(n = 7)
+  ) +
+  ggplot2::scale_fill_viridis_c() +
+  ggplot2::labs(
+    fill = expression(atop("Median reduction in ",  R[t] * "\n from quarantine"))
+  )+
+  ggplot2::theme_bw()
+```
+
+## References
