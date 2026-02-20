@@ -93,7 +93,7 @@ outbreak_no_Q <- scenario_sim(
   delays = delays,
   event_probs = event_prob_opts(
     asymptomatic = 1,
-    presymptomatic_transmission = 0.3,
+    presymptomatic_transmission = 0.15,
     symptomatic_ascertained = 0.5
   ),
   interventions = intervention_opts(quarantine = FALSE),
@@ -108,7 +108,7 @@ outbreak_Q <- scenario_sim(
   delays = delays,
   event_probs = event_prob_opts(
     asymptomatic = 1,
-    presymptomatic_transmission = 0.3,
+    presymptomatic_transmission = 0.15,
     symptomatic_ascertained = 0.5
   ),
   interventions = intervention_opts(quarantine = TRUE),
@@ -129,7 +129,7 @@ outbreak_no_Q <- scenario_sim(
   delays = delays,
   event_probs = event_prob_opts(
     asymptomatic = 0.5,
-    presymptomatic_transmission = 0.3,
+    presymptomatic_transmission = 0.15,
     symptomatic_ascertained = 0
   ),
   interventions = intervention_opts(quarantine = FALSE),
@@ -144,7 +144,7 @@ outbreak_Q <- scenario_sim(
   delays = delays,
   event_probs = event_prob_opts(
     asymptomatic = 0.5,
-    presymptomatic_transmission = 0.3,
+    presymptomatic_transmission = 0.15,
     symptomatic_ascertained = 0
   ),
   interventions = intervention_opts(quarantine = TRUE),
@@ -165,7 +165,7 @@ outbreak_no_Q <- scenario_sim(
   delays = delays,
   event_probs = event_prob_opts(
     asymptomatic = 0.5,
-    presymptomatic_transmission = 0.3,
+    presymptomatic_transmission = 0.15,
     symptomatic_ascertained = 0.5
   ),
   interventions = intervention_opts(quarantine = FALSE),
@@ -180,7 +180,7 @@ outbreak_Q <- scenario_sim(
   delays = delays,
   event_probs = event_prob_opts(
     asymptomatic = 0.5,
-    presymptomatic_transmission = 0.3,
+    presymptomatic_transmission = 0.15,
     symptomatic_ascertained = 0.5
   ),
   interventions = intervention_opts(quarantine = TRUE),
@@ -467,7 +467,7 @@ for (i in seq_len(nrow(params))) {
       ),
       event_probs = event_prob_opts(
         asymptomatic = 0.1,
-        presymptomatic_transmission = 0.1,
+        presymptomatic_transmission = 0.15,
         symptomatic_ascertained = 0.8
       ),
       interventions = intervention_opts(quarantine = j),
