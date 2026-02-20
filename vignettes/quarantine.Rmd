@@ -71,9 +71,8 @@ Here we briefly demonstrate how asymptomatic and missed infectees reduce the eff
 
 ```{r}
 offspring <- offspring_opts(
-  community = \(n) rnbinom(n = n, mu = 2.5, size = 0.16),
-  isolated = \(n) rnbinom(n = n, mu = 0, size = 1),
-  asymptomatic = \(n) rnbinom(n = n, mu = 2.5, size = 0.16)
+  community = \(n) rnbinom(n = n, mu = 2.5, size = 1),
+  isolated = \(n) rnbinom(n = n, mu = 0, size = 1)
 )
 delays <- delay_opts(
   incubation_period = \(n) rweibull(n = n, shape = 2.32, scale = 6.49),
@@ -199,7 +198,7 @@ outbreak_no_Q <- scenario_sim(
   n = 250, 
   initial_cases = 5, 
   offspring = offspring_opts(
-    community = \(n) rnbinom(n = n, mu = 2.5, size = 1),
+    community = \(n) rnbinom(n = n, mu = 2.5, size = 0.16),
     isolated = \(n) rnbinom(n = n, mu = 0, size = 1)
   ), 
   delays = delay_opts(
@@ -237,7 +236,7 @@ outbreak_Q <- scenario_sim(
   n = 250, 
   initial_cases = 5, 
   offspring = offspring_opts(
-    community = \(n) rnbinom(n = n, mu = 2.5, size = 1),
+    community = \(n) rnbinom(n = n, mu = 2.5, size = 0.16),
     isolated = \(n) rnbinom(n = n, mu = 0, size = 1)
   ), 
   delays = delay_opts(
