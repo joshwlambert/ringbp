@@ -61,6 +61,7 @@ In the rest of this vignette we explore the behaviour of quarantine in the {ring
 library(ringbp)
 library(data.table)
 library(tinyplot)
+library(knitr)
 ```
 
 ## Demonstrating the interaction of quarantine with asymptomatics and contact tracing
@@ -366,12 +367,13 @@ delays <- list(
 
 outbreak <- vector(mode = "list", length = length(delays) * 2)
 idx <- 1
+nsim <- 250
 
 for (i in seq_along(delays)) {
   for (j in c(FALSE, TRUE)) {
     message("Running simulation ", i, "... Quarantine: ", j, "\n")
     outbreak[[idx]] <- scenario_sim(
-      n = 250, 
+      n = nsim, 
       initial_cases = 5, 
       offspring = offspring_opts(
         community = \(n) rnbinom(n = n, mu = 2.5, size = 1),
@@ -379,9 +381,9 @@ for (i in seq_along(delays)) {
       ), 
       delays = delays[[i]],
       event_probs = event_prob_opts(
-        asymptomatic = 0.1, 
+        asymptomatic = 0, 
         presymptomatic_transmission = 0.15, 
-        symptomatic_ascertained = 0.8
+        symptomatic_ascertained = 1
       ), 
       interventions = intervention_opts(quarantine = j),
       sim = sim_opts(cap_max_days = 365, cap_cases = 5000)
@@ -401,8 +403,8 @@ Rt <- lapply(outbreak, \(x) x[week == max(week), effective_r0])
 n_gen <- lapply(outbreak, \(x) sapply(x[week == max(week), cases_per_gen], length))
 
 compare_Q_dists <- data.table(
-  quarantine = rep(c(rep(FALSE, 100), rep(TRUE, 100)), 3),
-  delay_type = c(rep("dirac", 200), rep("unif", 200), rep("weibull", 200)), 
+  quarantine = rep(c(rep(FALSE, nsim), rep(TRUE, nsim)), 3),
+  delay_type = c(rep("dirac", nsim * 2), rep("unif", nsim * 2), rep("weibull", nsim * 2)), 
   Rt = unlist(Rt),
   n_gen = unlist(n_gen)
 )
@@ -432,6 +434,172 @@ tinyplot(
 ```
 
 The $R_t$ plots show that quarantine has a small negative impact, but the more pronounced impact is on number of generations, which is reduced when quarantine is active.
+
+---
+
+At the start of this vignette we showed that when the probability of case being asymptomatic is one (i.e. no infections show symptoms) or the ascertainment of contacts by tracing is zero (i.e. no contacts are traced), both caused the effect of quarantine to go to zero. Next we repeat the above analysis, assuming three onset-to-isolation delay distributions, but with a non-zero value for the proportion of asymptomatic cases, and a non-one value for contacts ascertained. This will show how much of the quarantine effect shown in the two previous plots is diminished in these scenarios.
+
+```{r}
+idx <- 1
+
+for (i in seq_along(delays)) {
+  for (j in c(FALSE, TRUE)) {
+    message("Running simulation ", i, "... Quarantine: ", j, "\n")
+    outbreak[[idx]] <- scenario_sim(
+      n = nsim, 
+      initial_cases = 5, 
+      offspring = offspring_opts(
+        community = \(n) rnbinom(n = n, mu = 2.5, size = 1),
+        isolated = \(n) rnbinom(n = n, mu = 0, size = 1)
+      ), 
+      delays = delays[[i]],
+      event_probs = event_prob_opts(
+        asymptomatic = 0.1, 
+        presymptomatic_transmission = 0.15, 
+        symptomatic_ascertained = 0.8
+      ), 
+      interventions = intervention_opts(quarantine = j),
+      sim = sim_opts(cap_max_days = 365, cap_cases = 5000)
+    )
+    idx <- idx + 1
+  }
+}
+```
+
+```{r}
+# the Rt is the same for all outbreak weeks so we get it from the last week
+Rt <- lapply(outbreak, \(x) x[week == max(week), effective_r0])
+
+# the number of generations is the same for all outbreak weeks so we get it from the last week
+n_gen <- lapply(outbreak, \(x) sapply(x[week == max(week), cases_per_gen], length))
+
+compare_Q_dists <- data.table(
+  quarantine = rep(c(rep(FALSE, nsim), rep(TRUE, nsim)), 3),
+  delay_type = c(rep("dirac", nsim * 2), rep("unif", nsim * 2), rep("weibull", nsim * 2)), 
+  Rt = unlist(Rt),
+  n_gen = unlist(n_gen)
+)
+```
+
+```{r}
+tinyplot(
+  ~ Rt | quarantine, 
+  data = compare_Q_dists, 
+  type = "density", 
+  fill = "by",
+  facet = ~delay_type,
+  theme = "clean"
+)
+```
+
+```{r}
+tinyplot(
+  ~ n_gen | quarantine, 
+  data = compare_Q_dists, 
+  type = "density", 
+  fill = "by",
+  facet = ~delay_type,
+  xlab = "Number of outbreak generations",
+  theme = "clean"
+)
+```
+
+The plots show that the effect of quarantine on $R_t$ remains small, but the effect of quarantine on reducing the number of outbreak generations is diminished.
+
+Investigating whether the change in $R_t$ and $N_\mathrm{gen}$ is due to the proportion of asymptomatics or contact tracing, or both we change the model parameters all possible combinations and show the results in the table below.
+
+```{r}
+params <- expand.grid(
+  asymptomatic = c(0, 0.1),
+  symptomatic_ascertained = c(1, 0.8),
+  quarantine = c(FALSE, TRUE)
+)
+
+outbreak <- vector(mode = "list", length = length(delays) * nrow(params))
+idx <- 1
+
+for (i in seq_along(delays)) {
+  for (j in seq_len(nrow(params))) {
+    outbreak[[idx]] <- scenario_sim(
+      n = nsim, 
+      initial_cases = 5, 
+      offspring = offspring_opts(
+        community = \(n) rnbinom(n = n, mu = 2.5, size = 1),
+        isolated = \(n) rnbinom(n = n, mu = 0, size = 1)
+      ), 
+      delays = delays[[i]],
+      event_probs = event_prob_opts(
+        asymptomatic = params[j, "asymptomatic"], 
+        presymptomatic_transmission = 0.15, 
+        symptomatic_ascertained = params[j, "symptomatic_ascertained"]
+      ), 
+      interventions = intervention_opts(quarantine = params[j, "quarantine"]),
+      sim = sim_opts(cap_max_days = 365, cap_cases = 5000)
+    )
+    idx <- idx + 1
+  }
+}
+```
+
+```{r}
+# the Rt is the same for all outbreak weeks so we get it from the last week
+Rt <- lapply(outbreak, \(x) x[week == max(week), effective_r0])
+
+# the number of generations is the same for all outbreak weeks so we get it from the last week
+n_gen <- lapply(outbreak, \(x) sapply(x[week == max(week), cases_per_gen], length))
+
+mean_Rt <- sapply(Rt, mean)
+median_Rt <- sapply(Rt, median)
+
+mean_n_gen <- sapply(n_gen, mean)
+median_n_gen <- sapply(n_gen, median)
+
+compare_Q_params <- rbindlist(list(params, params, params))
+compare_Q_params[
+  , c("dist", "mean_Rt", "median_Rt", "mean_n_gen", "median_n_gen") := list(
+    c(
+      rep("dirac", nrow(params)), 
+      rep("unif", nrow(params)), 
+      rep("weibull", nrow(params))
+    ), 
+    mean_Rt, 
+    median_Rt, 
+    mean_n_gen,
+    median_n_gen
+  )
+]
+```
+
+```{r}
+compare_Q_params_w <- dcast(
+  compare_Q_params, 
+  asymptomatic + symptomatic_ascertained + dist ~ quarantine, 
+  value.var = c("mean_Rt", "median_Rt", "mean_n_gen", "median_n_gen")
+)
+
+compare_Q_params_w[, `:=`(
+  diff_mean_Rt   = mean_Rt_TRUE - mean_Rt_FALSE,
+  diff_median_Rt = median_Rt_TRUE - median_Rt_FALSE,
+  diff_mean_n_gen   = mean_n_gen_TRUE - mean_n_gen_FALSE,
+  diff_median_n_gen = median_n_gen_TRUE - median_n_gen_FALSE
+)]
+
+res <- compare_Q_params_w[, list(
+  asymptomatic, 
+  symptomatic_ascertained, 
+  dist, 
+  diff_mean_Rt, 
+  diff_median_Rt, 
+  diff_mean_n_gen,
+  diff_median_n_gen
+)]
+
+kable(res)
+```
+
+The table shows the reduction in mean and median $R_t$ and $N_\mathrm{gen}$ caused by quarantine for each parameter set. If the diff is negative it means quarantine reduced the $R_t$ and the number of generations ($N_\mathrm{gen}$).
+
+---
 
 Lastly we compare different values of the incubation period and onset-to-isolation to see how it affects the $R_t$ and $N_\mathrm{gen}$.
 
