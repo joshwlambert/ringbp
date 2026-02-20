@@ -1,10 +1,10 @@
 ---
-title: "quarantine"
+title: "Quarantine"
 output: rmarkdown::html_vignette
 bibliography: references.bib
 link-citations: true
 vignette: >
-  %\VignetteIndexEntry{quarantine}
+  %\VignetteIndexEntry{Quarantine}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -24,7 +24,7 @@ The epidemiological model implemented in the {ringbp} R package contains the opt
 
 Quarantine in the model has a relatively simple interpretation and implementation. 
 
-_Interpretation_: If quarantine is turned off, then assuming a infectee is not asymptomatic nor missed by contact tracing, they are isolated at their symptom onset time if after infector isolation time, otherwise at the earlier of the infector and infectee isolation times. So an infectee needs to symptomatic to isolate when quarantine is not active. If quarantine is turned on, the infectee is quarantined/isolated at the earlier of the infector's or infectees isolation time. So the difference when quarantine is active, is infectees can be isolated at their infector's isolation time independent of whether they are showing symptoms. Therefore, when quarantine is active an infectee is isolated at the same time or earlier than if quarantine was not active, and never later.
+_Interpretation_: If quarantine is turned off, then assuming an infectee is not asymptomatic nor missed by contact tracing, they are isolated at their symptom onset time if after their infector's isolation time, otherwise at the earlier of the infector and infectee isolation times. So an infectee needs to symptomatic to isolate when quarantine is not active. If quarantine is turned on, the infectee is quarantined/isolated at the earlier of the infector's or infectee's isolation time. The difference when quarantine is active is infectees can be isolated at their infector's isolation time independent of whether they are showing symptoms. Therefore, when quarantine is active an infectee is isolated at the same time or earlier than if quarantine was not active, and never later.
 
 _Implementation_: The time at which an infectee is isolated is sampled in `outbreak_step()`. Expand the link below to see the code in `outbreak_step()` that does the sampling depending on if quarantine is turned on or off (i.e. `TRUE` or `FALSE`). 
 
@@ -66,7 +66,7 @@ library(knitr)
 
 ## Demonstrating the interaction of quarantine with asymptomatics and contact tracing
 
-In the _interpretation_ given above, it stated that both the active and inactive quarantine scenarios required assuming a infectee is not asymptomatic nor missed by contact tracing. This is because if an infectee is asymptomatic they cannot be isolated or quarantined, thus, there is no impact of quarantine. Secondly, isolated or quarantining an infectee requires tracing them; meaning if they are missed by contact tracing they are isolated after a delay from symptom onset, irrespective of whether quarantine is active. 
+In the _interpretation_ given above, it stated that both the active and inactive quarantine scenarios require assuming an infectee is not asymptomatic nor missed by contact tracing. This is because if an infectee is asymptomatic they cannot be isolated or quarantined, thus, there is no impact of quarantine. Secondly, isolating or quarantining an infectee requires tracing them; meaning if they are missed by contact tracing they are isolated after a delay from symptom onset, irrespective of whether quarantine is active. 
 
 Here we briefly demonstrate how asymptomatic and missed infectees reduce the effect of quarantine to zero. In a scenario where all cases are asymptomatic the outbreak is identical whether quarantine is active or inactive.
 
@@ -79,16 +79,18 @@ delays <- delay_opts(
   incubation_period = \(n) rweibull(n = n, shape = 2.32, scale = 6.49),
   onset_to_isolation = \(n) rweibull(n = n, shape = 2.5, scale = 5)
 )
-
 sim <- sim_opts(
   cap_max_days = 365,
-  cap_cases = 2000
+  cap_cases = 5000
 )
+
+nsim <- 250
+initial_cases <- 5
 
 set.seed(1)
 outbreak_no_Q <- scenario_sim(
-  n = 100,
-  initial_cases = 5,
+  n = nsim,
+  initial_cases = initial_cases,
   offspring = offspring,
   delays = delays,
   event_probs = event_prob_opts(
@@ -102,8 +104,8 @@ outbreak_no_Q <- scenario_sim(
 
 set.seed(1)
 outbreak_Q <- scenario_sim(
-  n = 100,
-  initial_cases = 5,
+  n = nsim,
+  initial_cases = initial_cases,
   offspring = offspring,
   delays = delays,
   event_probs = event_prob_opts(
@@ -123,8 +125,8 @@ The same is true, that quarantine has no effect on disease transmission, if we a
 ```{r}
 set.seed(1)
 outbreak_no_Q <- scenario_sim(
-  n = 100,
-  initial_cases = 5,
+  n = nsim,
+  initial_cases = initial_cases,
   offspring = offspring,
   delays = delays,
   event_probs = event_prob_opts(
@@ -138,8 +140,8 @@ outbreak_no_Q <- scenario_sim(
 
 set.seed(1)
 outbreak_Q <- scenario_sim(
-  n = 100,
-  initial_cases = 5,
+  n = nsim,
+  initial_cases = initial_cases,
   offspring = offspring,
   delays = delays,
   event_probs = event_prob_opts(
@@ -159,8 +161,8 @@ To conclude this section we finish by showing that if some cases are symptomatic
 ```{r}
 set.seed(1)
 outbreak_no_Q <- scenario_sim(
-  n = 100,
-  initial_cases = 5,
+  n = nsim,
+  initial_cases = initial_cases,
   offspring = offspring,
   delays = delays,
   event_probs = event_prob_opts(
@@ -174,8 +176,8 @@ outbreak_no_Q <- scenario_sim(
 
 set.seed(1)
 outbreak_Q <- scenario_sim(
-  n = 100,
-  initial_cases = 5,
+  n = nsim,
+  initial_cases = initial_cases,
   offspring = offspring,
   delays = delays,
   event_probs = event_prob_opts(
@@ -195,24 +197,30 @@ identical(outbreak_no_Q, outbreak_Q)
 In the first example we will look at simulating a COVID-19 outbreak, following the parameterisation of @Hellewell2020.
 
 ```{r}
+covid_offspring <- offspring_opts(
+  community = \(n) rnbinom(n = n, mu = 2.5, size = 0.16),
+  isolated = \(n) rnbinom(n = n, mu = 0, size = 1)
+)
+covid_delays <- delay_opts(
+  incubation_period = \(n) rweibull(n = n, shape = 2.322737, scale = 6.492272),
+  onset_to_isolation =\(n) rweibull(n = n , shape = 1.651524, scale = 2.305172)
+)
+covid_event_probs <- event_prob_opts(
+  asymptomatic = 0.1, 
+  presymptomatic_transmission = 0.15, 
+  symptomatic_ascertained = 0.8
+)
+```
+
+```{r}
 outbreak_no_Q <- scenario_sim(
-  n = 250, 
-  initial_cases = 5, 
-  offspring = offspring_opts(
-    community = \(n) rnbinom(n = n, mu = 2.5, size = 0.16),
-    isolated = \(n) rnbinom(n = n, mu = 0, size = 1)
-  ), 
-  delays = delay_opts(
-    incubation_period = \(n) rweibull(n = n, shape = 2.322737, scale = 6.492272),
-    onset_to_isolation =\(n) rweibull(n = n , shape = 1.651524, scale = 2.305172)
-  ), 
-  event_probs = event_prob_opts(
-    asymptomatic = 0.1, 
-    presymptomatic_transmission = 0.15, 
-    symptomatic_ascertained = 0.8
-  ), 
+  n = nsim, 
+  initial_cases = initial_cases, 
+  offspring = covid_offspring, 
+  delays = covid_delays, 
+  event_probs = covid_event_probs, 
   interventions = intervention_opts(quarantine = FALSE),
-  sim = sim_opts(cap_max_days = 365, cap_cases = 5000)
+  sim = sim
 )
 ```
 
@@ -234,23 +242,13 @@ We can repeat the above simulation, but this time _activate quarantine_.
 
 ```{r}
 outbreak_Q <- scenario_sim(
-  n = 250, 
-  initial_cases = 5, 
-  offspring = offspring_opts(
-    community = \(n) rnbinom(n = n, mu = 2.5, size = 0.16),
-    isolated = \(n) rnbinom(n = n, mu = 0, size = 1)
-  ), 
-  delays = delay_opts(
-    incubation_period = \(n) rweibull(n = n, shape = 2.322737, scale = 6.492272),
-    onset_to_isolation =\(n) rweibull(n = n , shape = 1.651524, scale = 2.305172)
-  ), 
-  event_probs = event_prob_opts(
-    asymptomatic = 0.1, 
-    presymptomatic_transmission = 0.15, 
-    symptomatic_ascertained = 0.8
-  ), 
+  n = nsim, 
+  initial_cases = initial_cases, 
+  offspring = covid_offspring, 
+  delays = covid_delays, 
+  event_probs = covid_event_probs, 
   interventions = intervention_opts(quarantine = TRUE),
-  sim = sim_opts(cap_max_days = 365, cap_cases = 5000)
+  sim = sim
 )
 ```
 
@@ -365,28 +363,29 @@ delays <- list(
   )
 )
 
-outbreak <- vector(mode = "list", length = length(delays) * 2)
+params <- setDT(expand.grid(
+  asymptomatic = c(0, 0.1),
+  symptomatic_ascertained = c(1, 0.8),
+  quarantine = c(FALSE, TRUE)
+))
+
+outbreak <- vector(mode = "list", length = length(delays) * nrow(params))
 idx <- 1
-nsim <- 250
 
 for (i in seq_along(delays)) {
-  for (j in c(FALSE, TRUE)) {
-    message("Running simulation ", i, "... Quarantine: ", j, "\n")
+  for (j in seq_len(nrow(params))) {
     outbreak[[idx]] <- scenario_sim(
       n = nsim, 
-      initial_cases = 5, 
-      offspring = offspring_opts(
-        community = \(n) rnbinom(n = n, mu = 2.5, size = 1),
-        isolated = \(n) rnbinom(n = n, mu = 0, size = 1)
-      ), 
+      initial_cases = initial_cases, 
+      offspring = offspring, 
       delays = delays[[i]],
       event_probs = event_prob_opts(
-        asymptomatic = 0, 
+        asymptomatic = params[j, asymptomatic], 
         presymptomatic_transmission = 0.15, 
-        symptomatic_ascertained = 1
+        symptomatic_ascertained = params[j, symptomatic_ascertained]
       ), 
-      interventions = intervention_opts(quarantine = j),
-      sim = sim_opts(cap_max_days = 365, cap_cases = 5000)
+      interventions = intervention_opts(quarantine = params[j, quarantine]),
+      sim = sim
     )
     idx <- idx + 1
   }
@@ -396,24 +395,31 @@ for (i in seq_along(delays)) {
 We can again extract $R_t$ and $N_\mathrm{gen}$.
 
 ```{r}
+# create parameter table for each delay type
+pars <- rbindlist(list(params, params, params))
+pars[, delay_type := c(rep("dirac", 8), rep("unif", 8), rep("weibull", 8))]
+
 # the Rt is the same for all outbreak weeks so we get it from the last week
 Rt <- lapply(outbreak, \(x) x[week == max(week), effective_r0])
 
 # the number of generations is the same for all outbreak weeks so we get it from the last week
 n_gen <- lapply(outbreak, \(x) sapply(x[week == max(week), cases_per_gen], length))
 
-compare_Q_dists <- data.table(
-  quarantine = rep(c(rep(FALSE, nsim), rep(TRUE, nsim)), 3),
-  delay_type = c(rep("dirac", nsim * 2), rep("unif", nsim * 2), rep("weibull", nsim * 2)), 
-  Rt = unlist(Rt),
-  n_gen = unlist(n_gen)
-)
+pars[, Rt := list(Rt)]
+pars[, n_gen := list(n_gen)]
+
+# unnest the list columns
+cols_to_keep <- setdiff(names(pars), c("Rt", "n_gen"))
+compare_Q_dists <- pars[, .(Rt = unlist(Rt)), by = cols_to_keep]
+compare_Q_dists[, n_gen := unlist(pars$n_gen)]
 ```
+
+We can plot just the scenarios that have complete contact tracing and no asymptomatic cases.
 
 ```{r}
 tinyplot(
   ~ Rt | quarantine, 
-  data = compare_Q_dists, 
+  data = compare_Q_dists[asymptomatic == 0 & symptomatic_ascertained == 1, ], 
   type = "density", 
   fill = "by",
   facet = ~delay_type,
@@ -424,7 +430,7 @@ tinyplot(
 ```{r}
 tinyplot(
   ~ n_gen | quarantine, 
-  data = compare_Q_dists, 
+  data = compare_Q_dists[asymptomatic == 0 & symptomatic_ascertained == 1, ], 
   type = "density", 
   fill = "by",
   facet = ~delay_type,
@@ -440,51 +446,9 @@ The $R_t$ plots show that quarantine has a small negative impact, but the more p
 At the start of this vignette we showed that when the probability of case being asymptomatic is one (i.e. no infections show symptoms) or the ascertainment of contacts by tracing is zero (i.e. no contacts are traced), both caused the effect of quarantine to go to zero. Next we repeat the above analysis, assuming three onset-to-isolation delay distributions, but with a non-zero value for the proportion of asymptomatic cases, and a non-one value for contacts ascertained. This will show how much of the quarantine effect shown in the two previous plots is diminished in these scenarios.
 
 ```{r}
-idx <- 1
-
-for (i in seq_along(delays)) {
-  for (j in c(FALSE, TRUE)) {
-    message("Running simulation ", i, "... Quarantine: ", j, "\n")
-    outbreak[[idx]] <- scenario_sim(
-      n = nsim, 
-      initial_cases = 5, 
-      offspring = offspring_opts(
-        community = \(n) rnbinom(n = n, mu = 2.5, size = 1),
-        isolated = \(n) rnbinom(n = n, mu = 0, size = 1)
-      ), 
-      delays = delays[[i]],
-      event_probs = event_prob_opts(
-        asymptomatic = 0.1, 
-        presymptomatic_transmission = 0.15, 
-        symptomatic_ascertained = 0.8
-      ), 
-      interventions = intervention_opts(quarantine = j),
-      sim = sim_opts(cap_max_days = 365, cap_cases = 5000)
-    )
-    idx <- idx + 1
-  }
-}
-```
-
-```{r}
-# the Rt is the same for all outbreak weeks so we get it from the last week
-Rt <- lapply(outbreak, \(x) x[week == max(week), effective_r0])
-
-# the number of generations is the same for all outbreak weeks so we get it from the last week
-n_gen <- lapply(outbreak, \(x) sapply(x[week == max(week), cases_per_gen], length))
-
-compare_Q_dists <- data.table(
-  quarantine = rep(c(rep(FALSE, nsim), rep(TRUE, nsim)), 3),
-  delay_type = c(rep("dirac", nsim * 2), rep("unif", nsim * 2), rep("weibull", nsim * 2)), 
-  Rt = unlist(Rt),
-  n_gen = unlist(n_gen)
-)
-```
-
-```{r}
 tinyplot(
   ~ Rt | quarantine, 
-  data = compare_Q_dists, 
+  data = compare_Q_dists[asymptomatic != 0 & symptomatic_ascertained != 1, ], 
   type = "density", 
   fill = "by",
   facet = ~delay_type,
@@ -495,7 +459,7 @@ tinyplot(
 ```{r}
 tinyplot(
   ~ n_gen | quarantine, 
-  data = compare_Q_dists, 
+  data = compare_Q_dists[asymptomatic != 0 & symptomatic_ascertained != 1, ], 
   type = "density", 
   fill = "by",
   facet = ~delay_type,
@@ -509,85 +473,35 @@ The plots show that the effect of quarantine on $R_t$ remains small, but the eff
 Investigating whether the change in $R_t$ and $N_\mathrm{gen}$ is due to the proportion of asymptomatics or contact tracing, or both we change the model parameters all possible combinations and show the results in the table below.
 
 ```{r}
-params <- expand.grid(
-  asymptomatic = c(0, 0.1),
-  symptomatic_ascertained = c(1, 0.8),
-  quarantine = c(FALSE, TRUE)
-)
-
-outbreak <- vector(mode = "list", length = length(delays) * nrow(params))
-idx <- 1
-
-for (i in seq_along(delays)) {
-  for (j in seq_len(nrow(params))) {
-    outbreak[[idx]] <- scenario_sim(
-      n = nsim, 
-      initial_cases = 5, 
-      offspring = offspring_opts(
-        community = \(n) rnbinom(n = n, mu = 2.5, size = 1),
-        isolated = \(n) rnbinom(n = n, mu = 0, size = 1)
-      ), 
-      delays = delays[[i]],
-      event_probs = event_prob_opts(
-        asymptomatic = params[j, "asymptomatic"], 
-        presymptomatic_transmission = 0.15, 
-        symptomatic_ascertained = params[j, "symptomatic_ascertained"]
-      ), 
-      interventions = intervention_opts(quarantine = params[j, "quarantine"]),
-      sim = sim_opts(cap_max_days = 365, cap_cases = 5000)
-    )
-    idx <- idx + 1
-  }
-}
-```
-
-```{r}
-# the Rt is the same for all outbreak weeks so we get it from the last week
-Rt <- lapply(outbreak, \(x) x[week == max(week), effective_r0])
-
-# the number of generations is the same for all outbreak weeks so we get it from the last week
-n_gen <- lapply(outbreak, \(x) sapply(x[week == max(week), cases_per_gen], length))
-
-mean_Rt <- sapply(Rt, mean)
-median_Rt <- sapply(Rt, median)
-
-mean_n_gen <- sapply(n_gen, mean)
-median_n_gen <- sapply(n_gen, median)
-
-compare_Q_params <- rbindlist(list(params, params, params))
-compare_Q_params[
-  , c("dist", "mean_Rt", "median_Rt", "mean_n_gen", "median_n_gen") := list(
-    c(
-      rep("dirac", nrow(params)), 
-      rep("unif", nrow(params)), 
-      rep("weibull", nrow(params))
-    ), 
-    mean_Rt, 
-    median_Rt, 
-    mean_n_gen,
-    median_n_gen
-  )
+compare_Q_summary <- compare_Q_dists[
+  , .(
+    mean_Rt = mean(Rt),
+    median_Rt = median(Rt),
+    mean_n_gen = mean(n_gen),
+    median_n_gen = median(n_gen)
+  ), 
+  by = .(asymptomatic, symptomatic_ascertained, quarantine, delay_type)
 ]
 ```
 
 ```{r}
-compare_Q_params_w <- dcast(
-  compare_Q_params, 
-  asymptomatic + symptomatic_ascertained + dist ~ quarantine, 
+compare_Q_summary_w <- dcast(
+  compare_Q_summary, 
+  asymptomatic + symptomatic_ascertained + delay_type ~ quarantine, 
   value.var = c("mean_Rt", "median_Rt", "mean_n_gen", "median_n_gen")
 )
 
-compare_Q_params_w[, `:=`(
+compare_Q_summary_w[, `:=`(
   diff_mean_Rt   = mean_Rt_TRUE - mean_Rt_FALSE,
   diff_median_Rt = median_Rt_TRUE - median_Rt_FALSE,
   diff_mean_n_gen   = mean_n_gen_TRUE - mean_n_gen_FALSE,
   diff_median_n_gen = median_n_gen_TRUE - median_n_gen_FALSE
 )]
 
-res <- compare_Q_params_w[, list(
+res <- compare_Q_summary_w[, list(
   asymptomatic, 
   symptomatic_ascertained, 
-  dist, 
+  delay_type, 
   diff_mean_Rt, 
   diff_median_Rt, 
   diff_mean_n_gen,
