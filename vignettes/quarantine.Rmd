@@ -224,7 +224,7 @@ outbreak_no_Q <- scenario_sim(
 )
 ```
 
-From this outbreak we can look at the effecive reproduction number ($R_t$) from each of the 100 simulation replicates, as well as the number of generations (in terms of branching process generations) for each simulation replicate ($N_\mathrm{gen}$).
+From this outbreak we can look at the effecive reproduction number ($R_t$) from each of the `r nsim` simulation replicates, as well as the number of generations (in terms of branching process generations) for each simulation replicate ($N_\mathrm{gen}$).
 
 ```{r}
 # the Rt is the same for all outbreak weeks so we get it from the last week
@@ -347,7 +347,7 @@ tinyplot(
 
 Now we compare the effect of quarantine for each of these onset-to-isolation parameterisations.
 
-```{r}
+```{r, cache=TRUE}
 delays <- list(
   dirac = delay_opts(
     incubation_period = \(n) rep(10, n),
@@ -508,7 +508,14 @@ res <- compare_Q_summary_w[, list(
   diff_median_n_gen
 )]
 
-kable(res)
+# format column names
+col_names <- c(
+  "% Asym.", "% CT", "O2I Delay", "Mean $\\\\Delta R_t$",
+  "Median $\\\\Delta R_t$", "Mean $\\\\Delta N_\\mathrm{gen}$",
+  "Median $\\\\Delta N_\\mathrm{gen}$"
+)
+
+kable(res, col.names = col_names, row.names = FALSE, digits = 3)
 ```
 
 The table shows the reduction in mean and median $R_t$ and $N_\mathrm{gen}$ caused by quarantine for each parameter set. If the diff is negative it means quarantine reduced the $R_t$ and the number of generations ($N_\mathrm{gen}$).
