@@ -267,7 +267,7 @@ n_gen_Q <- sapply(outbreak_no_Q[week == max(week), cases_per_gen], length)
 And compare these by plotting them as densities:
 
 ```{r}
-compare_Q <- data.frame(
+compare_Q <- data.table(
   Rt = c(Rt_no_Q, Rt_Q),
   n_gen = c(n_gen_no_Q, n_gen_Q),
   quarantine = c(rep(FALSE, length(Rt_no_Q)), rep(TRUE, length(Rt_Q)))
