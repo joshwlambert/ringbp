@@ -21,6 +21,15 @@
 #'   specifying the number of times to sample the offspring distribution (i.e.
 #'   the length of the `function` output). Will be specified as the same as
 #'   the `community` offspring distribution if left unspecified
+#' @param ... [Dots] Not used, will warn if arguments are passed to [...].
+#' @param community_contact_prob_infect a `numeric` scalar probability (between
+#'   0 and 1 inclusive): probability that contact in the community causes
+#'   infection.
+#' @param isolated_contact_prob_infect a `numeric` scalar probability (between
+#'   0 and 1 inclusive): probability that contact in isolation causes infection.
+#' @param asymptomatic_contact_prob_infect a `numeric` scalar probability
+#'   (between 0 and 1 inclusive): probability that contact with an asymptomatic
+#'   individual in the community causes infection.
 #'
 #' @return A `list` with class `<ringbp_offspring_opts>`.
 #' @export
@@ -35,16 +44,29 @@
 #'   isolated = \(n) rnbinom(n = n, mu = 0.5, size = 1),
 #'   asymptomatic = \(n) rnbinom(n = n, mu = 2.5, size = 0.16)
 #' )
-offspring_opts <- function(community, isolated, asymptomatic = community) {
+offspring_opts <- function(community,
+                           isolated,
+                           asymptomatic = community,
+                           ...,
+                           community_contact_prob_infect = 1,
+                           isolated_contact_prob_infect = 1,
+                           asymptomatic_contact_prob_infect = 1) {
 
+  chkDots(...)
   check_dist_func(community, dist_name = "community")
   check_dist_func(isolated, dist_name = "isolated")
   check_dist_func(asymptomatic, dist_name = "asymptomatic")
+  checkmate::assert_number(community_contact_prob_infect, lower = 0, upper = 1)
+  checkmate::assert_number(isolated_contact_prob_infect, lower = 0, upper = 1)
+  checkmate::assert_number(asymptomatic_contact_prob_infect, lower = 0, upper = 1)
 
   opts <- list(
     community = community,
     isolated = isolated,
-    asymptomatic = asymptomatic
+    asymptomatic = asymptomatic,
+    community_contact_prob_infect = community_contact_prob_infect,
+    isolated_contact_prob_infect = isolated_contact_prob_infect,
+    asymptomatic_contact_prob_infect = asymptomatic_contact_prob_infect
   )
 
   class(opts) <- "ringbp_offspring_opts"
