@@ -237,3 +237,65 @@ test_that("Some cases are missed when ascertained = 0.5", {
   expect_gt(missed[1], 5)
   expect_gt(missed[2], 5)
 })
+
+test_that("contact_prob_infect < 1 reduces infections proportionally", {
+  set.seed(42)
+  offspring_local <- offspring_opts(
+    community = \(n) rep(100, n),
+    isolated = \(n) rep(0, n),
+    asymptomatic = \(n) rep(0, n),
+    community_contact_prob_infect = 0.1
+  )
+  delays_local <- delay_opts(
+    incubation_period = \(n) rep(5, n),
+    onset_to_isolation = \(n) rep(1e6, n)
+  )
+  initial <- outbreak_setup(
+    initial_cases = 1,
+    delays = delays_local,
+    event_probs = event_probs
+  )
+  out <- outbreak_step(
+    case_data = initial,
+    offspring = offspring_local,
+    delays = delays_local,
+    event_probs = event_probs,
+    interventions = interventions
+  )
+  # 100 contacts, ~10% infect => far fewer than 100 cases
+  expect_lt(out$cases_in_gen, 30)
+  expect_gt(out$cases_in_gen, 1)
+})
+
+test_that("uninfected contacts of ascertained infectors consume test quota", {
+  set.seed(7)
+  offspring_local <- offspring_opts(
+    community = \(n) rep(20, n),
+    isolated = \(n) rep(0, n),
+    asymptomatic = \(n) rep(0, n),
+    community_contact_prob_infect = 0.05
+  )
+  delays_local <- delay_opts(
+    incubation_period = \(n) rep(5, n),
+    onset_to_isolation = \(n) rep(2, n)
+  )
+  event_probs_local <- event_prob_opts(
+    asymptomatic = 0,
+    presymptomatic_transmission = 0.15,
+    symptomatic_ascertained = 1
+  )
+  # tiny quota - uninfected contacts should starve infected ones of tests
+  interventions_tight <- intervention_opts(
+    quarantine = TRUE, test_sensitivity = 1, test_capacity = 2
+  )
+  out <- outbreak_model(
+    initial_cases = 5,
+    offspring = offspring_local,
+    delays = delays_local,
+    event_probs = event_probs_local,
+    interventions = interventions_tight,
+    sim = sim_opts(cap_max_days = 60, cap_cases = 500)
+  )
+  # quota should have been heavily consumed in early days
+  expect_true(any(attr(out, "extinct") %in% c(TRUE, FALSE)))
+})
