@@ -5,6 +5,15 @@
 #'   `community` meaning transmission of subclinical cases to be equal to
 #'   clinical cases unless specified otherwise.
 #'
+#' Each offspring distribution returns a count of *contacts* per infector.
+#'   Each contact independently becomes an infection with probability equal to
+#'   the corresponding `*_contact_prob_infect`. When all three
+#'   `*_contact_prob_infect` are `1` (the default) every contact is an
+#'   infection and the model reduces to the original branching process.
+#'   Uninfected contacts of *symptomatic* infectors are eligible to be tested
+#'   under [intervention_opts()] (see `test_capacity`); contacts of
+#'   asymptomatic infectors are never traced.
+#'
 #' @param community a `function`: a random number generating `function`
 #'   that samples from the community (non-isolated) offspring distribution,
 #'   the `function` accepts a single `integer` argument specifying the number
@@ -21,7 +30,9 @@
 #'   specifying the number of times to sample the offspring distribution (i.e.
 #'   the length of the `function` output). Will be specified as the same as
 #'   the `community` offspring distribution if left unspecified
-#' @param ... [Dots] Not used, will warn if arguments are passed to [...].
+#' @param ... [dots] Not used, will warn if arguments are passed. Are used to
+#'   ensure users don't accidentally pass offspring distributions to the
+#'   probability of infection (`*_prob_infect`) arguments.
 #' @param community_contact_prob_infect a `numeric` scalar probability (between
 #'   0 and 1 inclusive): probability that contact in the community causes
 #'   infection.
@@ -235,7 +246,10 @@ intervention_opts <- function(quarantine = FALSE,
 
   if (!is.function(test_capacity)) {
     test_capacity_ <- test_capacity
-    test_capacity <- function(t) rep(test_capacity_, times = length(t))
+    test_capacity <- function(prob_samples) {
+      day_seq <- 0:ceiling(max(prob_samples$onset))
+      rep(test_capacity_, times = length(day_seq))
+    }
   }
 
   opts <- list(
