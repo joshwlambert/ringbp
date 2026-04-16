@@ -81,13 +81,16 @@ outbreak_step <- function(case_data,
   # sample_offspring modify by reference
   case_data <- copy(case_data)
 
-  # case_data is modified by reference and generation times are returned
-  gt <- sample_offspring(
+  # case_data is modified by reference; generation times for infected contacts
+  # and per-infector counts of uninfected traced contacts are returned
+  offspring_out <- sample_offspring(
     case_data = case_data,
     offspring = offspring,
     alpha = event_probs$alpha,
     latent_period = delays$latent_period
   )
+  gt <- offspring_out$exposure
+  uninfected_contacts <- offspring_out$uninfected_contacts
 
   # Select cases that have generated any new cases
   new_case_data <- case_data[new_cases > 0 & !sampled]
@@ -140,8 +143,47 @@ outbreak_step <- function(case_data,
     value = nrow(case_data) + nrow(prob_samples)
   )
 
+  # draw per-contact tracing success (symptomatic_ascertained) BEFORE testing so
+  # that only successfully traced contacts - infected and uninfected alike -
+  # consume daily test quota. Infected offspring inherit tracing success via
+  # `missed`; uninfected contacts are thinned per-infector via rbinom.
+  prob_samples[
+    infector_asymptomatic == FALSE,
+    missed := runif(.N) > event_probs$symptomatic_ascertained
+  ]
+  if (length(uninfected_contacts) > 0) {
+    traced_counts <- rbinom(
+      n = length(uninfected_contacts),
+      size = as.integer(uninfected_contacts),
+      prob = event_probs$symptomatic_ascertained
+    )
+    names(traced_counts) <- names(uninfected_contacts)
+    uninfected_contacts <- traced_counts[traced_counts > 0]
+  }
+
+  # Compute a provisional isolated_time *before* allocating tests so that the
+  # daily test quota is debited on the day the case is actually detected
+  # (either by tracing or by self-presentation after symptom onset), not on a
+  # day that may come after the case has already been isolated.
+  prob_samples[, ref_time := onset + delays$onset_to_isolation(.N)]
+  prob_samples[, isolated_time := fcase(
+    # If asymptomatic, never isolated: time is Inf
+    asymptomatic == TRUE, Inf,
+    # If not traced, self-isolate after symptom onset (subject to a positive
+    # test below)
+    missed == TRUE, ref_time,
+    # if quarantine is in effect, isolated at the earlier of infector's or
+    # infectee's isolation time
+    rep(interventions$quarantine, .N), pmin(ref_time, infector_isolation_time),
+    # isolated at symptom onset time if after infector isolation time,
+    # otherwise at the earlier of infector and infectee isolation times
+    default = pmin(ref_time, pmax(onset, infector_isolation_time))
+  )]
+
   tested <- sample_testing(
     prob_samples = prob_samples,
+    uninfected_contacts = uninfected_contacts,
+    case_data = case_data,
     interventions = interventions
   )
 
@@ -149,39 +191,22 @@ outbreak_step <- function(case_data,
   test_quota <- tested$test_quota
   tested <- tested$tested
 
-  # draw a sample for missing and test result
+  # draw test result for infected offspring allocated a test
   prob_samples[
-    infector_asymptomatic == FALSE,
-    missed := runif(.N) > event_probs$symptomatic_ascertained
-  ][
     tested,
     test_positive := as.logical(
       rbinom(n = .N, size = 1, prob = interventions$test_sensitivity)
     )
   ]
 
-  prob_samples[, isolated_time := {
-    ref_time <- onset + delays$onset_to_isolation(.N)
-    fcase(
-      # If asymptomatic, never isolated: time is Inf
-      asymptomatic == TRUE, Inf,
-      # if false negative on the test then never isolated: time is Inf
-      test_positive == FALSE, Inf,
-      # If not asymptomatic, but are missed, isolated at your symptom onset
-      missed == TRUE, ref_time,
-      # if quarantine is in effect, isolated at the earlier of infector's or
-      # infectee's isolation time
-      rep(interventions$quarantine, .N), pmin(ref_time, infector_isolation_time),
-      # isolated at symptom onset time if after infector isolation time,
-      # otherwise at the earlier of infector and infectee isolation times
-      default = pmin(ref_time, pmax(onset, infector_isolation_time))
-    )
-  }]
+  # Isolation requires a positive test: rows that were not allocated a test
+  # (quota exhausted) or tested negative have isolated_time reset to Inf.
+  prob_samples[test_positive == FALSE, isolated_time := Inf]
 
   # Chop out unneeded sample columns
   prob_samples[
     , c("infector_isolation_time", "infector_asymptomatic",
-        "test_positive") := NULL
+        "test_positive", "ref_time") := NULL
   ]
   # Set new case ids for new people
   prob_samples[, caseid := case_data[.N, caseid] + seq_len(.N)]
