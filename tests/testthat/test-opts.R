@@ -7,7 +7,10 @@ test_that("offspring_opts works as expected", {
   expect_s3_class(offspring, "ringbp_offspring_opts")
   expect_identical(
     vapply(offspring, class, FUN.VALUE = character(1)),
-    c(community = "function", isolated = "function", asymptomatic = "function")
+    c(community = "function", isolated = "function", asymptomatic = "function",
+      community_contact_prob_infect = "numeric",
+      isolated_contact_prob_infect = "numeric",
+      asymptomatic_contact_prob_infect = "numeric")
   )
 })
 
@@ -19,7 +22,10 @@ test_that("offspring_opts works as expected with default", {
   expect_s3_class(offspring, "ringbp_offspring_opts")
   expect_identical(
     vapply(offspring, class, FUN.VALUE = character(1)),
-    c(community = "function", isolated = "function", asymptomatic = "function")
+    c(community = "function", isolated = "function", asymptomatic = "function",
+      community_contact_prob_infect = "numeric",
+      isolated_contact_prob_infect = "numeric",
+      asymptomatic_contact_prob_infect = "numeric")
   )
 })
 
@@ -55,7 +61,8 @@ test_that("intervention_opts works as expected", {
   expect_s3_class(interventions, "ringbp_intervention_opts")
   expect_identical(
     vapply(interventions, class, FUN.VALUE = character(1)),
-    c(quarantine = "logical", test_sensitivity = "numeric")
+    c(quarantine = "logical", test_sensitivity = "numeric",
+      test_capacity = "function")
   )
 })
 
