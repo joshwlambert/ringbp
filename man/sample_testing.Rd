@@ -4,22 +4,38 @@
 \alias{sample_testing}
 \title{Sample who gets tested given the daily testing capacity}
 \usage{
-sample_testing(prob_samples, interventions)
+sample_testing(prob_samples, uninfected_contacts, case_data, interventions)
 }
 \arguments{
 \item{prob_samples}{A \code{data.table} with the new cases from one generation,
 produced by \code{\link[=outbreak_step]{outbreak_step()}}.}
+
+\item{uninfected_contacts}{a named \code{integer}-like vector: per-infector
+counts of uninfected traced contacts, as produced by \code{\link[=sample_offspring]{sample_offspring()}}.
+Names are the infector \code{caseid}.}
+
+\item{case_data}{a \code{data.table}: the full case data so far. Used to look up
+the \code{isolated_time} of each uninfected contact's infector.}
 
 \item{interventions}{a \code{list} with class \verb{<ringbp_intervention_opts>}:
 the intervention settings for the \pkg{ringbp} model, returned by
 \code{\link[=intervention_opts]{intervention_opts()}}. Contains one element: \code{quarantine}}
 }
 \value{
-A \code{logical} vector of length equal to the length of \code{prob_samples},
-where \code{TRUE} is an individual gets tested and \code{FALSE} is an individual
-does not get tested to due limited testing capacity.
+A \code{list} with two elements:
+\itemize{
+\item \code{tested}: a \code{logical} vector of length \code{nrow(prob_samples)}, \code{TRUE}
+iff the infected offspring was allocated a test this generation.
+\item \code{test_quota}: a two-column \code{data.table} with remaining test capacity
+by day, carried over to the next generation.
+}
 }
 \description{
-Sample who gets tested given the daily testing capacity
+Allocates tests to traced contacts of ascertained (detected) infectors,
+subject to the daily testing capacity. Both infected contacts (appearing
+as offspring in \code{prob_samples}) and uninfected traced contacts
+(\code{uninfected_contacts}) debit the daily quota. Contacts of infectors whose
+\code{isolated_time} is \code{Inf} (asymptomatic or otherwise undetected) are never
+tested.
 }
 \keyword{internal}

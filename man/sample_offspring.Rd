@@ -34,27 +34,38 @@ presymptomatic transmission, depending on the \code{incubation_period}
 distribution and \code{presymptomatic_transmission} (in \code{\link[=event_prob_opts]{event_prob_opts()}}).}
 }
 \value{
-A \code{numeric} vector with the generation times for the new cases
-exposure/infection times.
+A \code{list} with two elements:
+\itemize{
+\item \code{exposure}: a named \code{numeric} vector of generation times for contacts
+that became infections, names are the infector \code{caseid}.
+\item \code{uninfected_contacts}: a named \code{integer} vector with per-infector counts
+of uninfected traced contacts from symptomatic infectors (community and
+isolated states combined). Asymptomatic infectors are excluded because
+their contacts are never traced. Names are the infector \code{caseid}.
+}
 
 \emph{\strong{Note}} The \code{case_data} supplied to the function is modified by
 references, see \code{\link[data.table:assign]{data.table::set()}} for more information.
 }
 \description{
-Samples from the offspring distributions (see \code{\link[=offspring_opts]{offspring_opts()}}) and adds
-the next generation of transmission events by reference to \code{case_data}.
-The generation times for each infector-infectee pair is also sampled and
-is returned from the function.
+Samples contacts from the offspring distributions (see \code{\link[=offspring_opts]{offspring_opts()}}),
+splits contacts into infections and uninfected traced contacts using the
+per-state \verb{*_contact_prob_infect} probabilities, and adds the next
+generation of transmission events by reference to \code{case_data}.
+The generation times for each infector-infectee pair and the per-infector
+counts of uninfected contacts are returned from the function.
 }
 \details{
 The offspring distribution for a case in the community cannot simply
 be sampled from the \code{community} offspring distribution as it might become
-isolated before infecting some or all of those cases.
+isolated before contacting some or all of those individuals.
 To account for cases that transition between states (for now only
-\emph{community} -> \emph{isolated}) we draw from the offspring from both
-distributions, assign all new cases a generation time, and then discard
-the ones that have generation time <= isolation time (for those from the
-isolated offspring distribution) or generation time > isolation time
-(for those from the community offspring distribution), respectively.
+\emph{community} -> \emph{isolated}) we draw contacts from both distributions, assign
+all contacts a generation time, and then discard the ones that have
+generation time <= isolation time (for those from the isolated offspring
+distribution) or generation time > isolation time (for those from the
+community offspring distribution), respectively. Each remaining contact
+independently becomes an infection with probability equal to the state's
+\verb{*_contact_prob_infect}.
 }
 \keyword{internal}
