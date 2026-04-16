@@ -2,20 +2,24 @@
 #' _community_, _isolated_ or _asymptomatic_ states and transition between
 #' states
 #'
-#' Samples from the offspring distributions (see [offspring_opts()]) and adds
-#'   the next generation of transmission events by reference to `case_data`.
-#'   The generation times for each infector-infectee pair is also sampled and
-#'   is returned from the function.
+#' Samples contacts from the offspring distributions (see [offspring_opts()]),
+#'   splits contacts into infections and uninfected traced contacts using the
+#'   per-state `*_contact_prob_infect` probabilities, and adds the next
+#'   generation of transmission events by reference to `case_data`.
+#'   The generation times for each infector-infectee pair and the per-infector
+#'   counts of uninfected contacts are returned from the function.
 #'
 #' @details The offspring distribution for a case in the community cannot simply
 #'   be sampled from the `community` offspring distribution as it might become
-#'   isolated before infecting some or all of those cases.
+#'   isolated before contacting some or all of those individuals.
 #'   To account for cases that transition between states (for now only
-#'   _community_ -> _isolated_) we draw from the offspring from both
-#'   distributions, assign all new cases a generation time, and then discard
-#'   the ones that have generation time <= isolation time (for those from the
-#'   isolated offspring distribution) or generation time > isolation time
-#'   (for those from the community offspring distribution), respectively.
+#'   _community_ -> _isolated_) we draw contacts from both distributions, assign
+#'   all contacts a generation time, and then discard the ones that have
+#'   generation time <= isolation time (for those from the isolated offspring
+#'   distribution) or generation time > isolation time (for those from the
+#'   community offspring distribution), respectively. Each remaining contact
+#'   independently becomes an infection with probability equal to the state's
+#'   `*_contact_prob_infect`.
 #'
 #' @inheritParams outbreak_step
 #' @inheritParams incubation_to_generation_time
@@ -23,8 +27,13 @@
 #'
 #' @autoglobal
 #'
-#' @return A `numeric` vector with the generation times for the new cases
-#'   exposure/infection times.
+#' @return A `list` with two elements:
+#'   * `exposure`: a named `numeric` vector of generation times for contacts
+#'     that became infections, names are the infector `caseid`.
+#'   * `uninfected_contacts`: a named `integer` vector with per-infector counts
+#'     of uninfected traced contacts from symptomatic infectors (community and
+#'     isolated states combined). Asymptomatic infectors are excluded because
+#'     their contacts are never traced. Names are the infector `caseid`.
 #'
 #'   ***Note*** The `case_data` supplied to the function is modified by
 #'   references, see [data.table::set()] for more information.
@@ -50,7 +59,7 @@ sample_offspring <- function(case_data, offspring, alpha, latent_period) {
   # distribution
   asymptomatic <- offspring$asymptomatic(sum(asymptomatic_idx))
 
-  # get generation times for community and isolated cases
+  # get generation times for community and isolated contacts
   community_exposure <- incubation_to_generation_time(
     symptom_onset_time = rep(new_cases$onset[symptomatic_idx], community),
     exposure_time = rep(new_cases$exposure[symptomatic_idx], community),
@@ -80,15 +89,46 @@ sample_offspring <- function(case_data, offspring, alpha, latent_period) {
     asymptomatic_exposure <- NULL
   }
 
-  # subset transmission events in community and isolation based on infector
-  # isolation time and infectee exposure time
-  infect_before_isolate <- community_exposure < rep(new_cases$isolated_time[symptomatic_idx], community)
-  community_exposure <- community_exposure[infect_before_isolate]
-  infect_after_isolate <- isolated_exposure > rep(new_cases$isolated_time[symptomatic_idx], isolated)
-  isolated_exposure <- isolated_exposure[infect_after_isolate]
+  # subset contact events in community and isolation based on infector
+  # isolation time and contact exposure time
+  contact_before_isolate <- community_exposure < rep(new_cases$isolated_time[symptomatic_idx], community)
+  community_exposure <- community_exposure[contact_before_isolate]
+  contact_after_isolate <- isolated_exposure > rep(new_cases$isolated_time[symptomatic_idx], isolated)
+  isolated_exposure <- isolated_exposure[contact_after_isolate]
 
-  # infectee exposure time for all transmission events
-  exposure <- c(community_exposure, isolated_exposure, asymptomatic_exposure)
+  # Bernoulli split: each retained contact becomes an infection with probability
+  # given by the state's *_contact_prob_infect. Skip the runif() draw when
+  # prob_infect == 1 to avoid perturbing the RNG state under the default model.
+  community_infected <- if (offspring$community_contact_prob_infect == 1) {
+    rep(TRUE, length(community_exposure))
+  } else {
+    runif(length(community_exposure)) < offspring$community_contact_prob_infect
+  }
+  isolated_infected <- if (offspring$isolated_contact_prob_infect == 1) {
+    rep(TRUE, length(isolated_exposure))
+  } else {
+    runif(length(isolated_exposure)) < offspring$isolated_contact_prob_infect
+  }
+  asymptomatic_infected <- if (offspring$asymptomatic_contact_prob_infect == 1) {
+    rep(TRUE, length(asymptomatic_exposure))
+  } else {
+    runif(length(asymptomatic_exposure)) < offspring$asymptomatic_contact_prob_infect
+  }
+
+  # uninfected traced contacts come from symptomatic infectors only.
+  # contacts of asymptomatic infectors are not traced and so never consume tests
+  uninfected_names <- c(
+    names(community_exposure)[!community_infected],
+    names(isolated_exposure)[!isolated_infected]
+  )
+  uninfected_contacts <- table(uninfected_names)
+
+  # keep only infected contacts as exposures for the next generation
+  exposure <- c(
+    community_exposure[community_infected],
+    isolated_exposure[isolated_infected],
+    asymptomatic_exposure[asymptomatic_infected]
+  )
 
   next_gen <- table(names(exposure))
 
@@ -96,6 +136,9 @@ sample_offspring <- function(case_data, offspring, alpha, latent_period) {
   case_data[sampled == FALSE, new_cases := 0L]
   case_data[as.numeric(names(next_gen)), new_cases := next_gen]
 
-  # return generation times
-  exposure
+  # return infected generation times and uninfected contact counts per infector
+  list(
+    exposure = exposure,
+    uninfected_contacts = uninfected_contacts
+  )
 }
