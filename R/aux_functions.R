@@ -111,63 +111,102 @@ presymptomatic_transmission_to_alpha <- function(presymptomatic_transmission) {
   res$minimum
 }
 
-#' Outbreak extinction functions
+#' Outbreak control and extinction functions
 #'
 #' @description
-#' `extinct_prob()`: Calculate proportion of runs that have controlled outbreak
+#' `control_prob()`: Calculate proportion of runs that have a controlled
+#'   outbreak
+#'
+#' `extinct_prob()`: Calculate proportion of runs with an extinct outbreak (a
+#'   special case of `control_prob()` with `control_threshold = 0`)
+#'
+#' `detect_control()`: Calculate whether outbreaks were controlled or not
 #'
 #' `detect_extinct()`: Calculate whether outbreaks went extinct or not
 #'
+#' `extinct_prob()` and `detect_extinct()` were added to the package before
+#'   `control_prob()` and `detect_control()`. The extinction functions are
+#'   special cases of the more general control functions by fixing
+#'   `control_threshold = 0`. They remain in the package for backwards
+#'   compatibility and convenience to calculate extinction metrics.
+#'
 #' @details
 #' The data passed to `scenario` has to be produced by [scenario_sim()].
-#' It cannot be produced by [outbreak_model()] as it requires the `sim` column,
-#' which is only appended in [scenario_sim()].
+#'   It cannot be produced by [outbreak_model()] as it requires the `sim`
+#'   column, which is only appended in [scenario_sim()].
 #'
 #' ***Warning***: the output from [scenario_sim()] contains an `cap_cases`
-#' attribute which is used by [extinct_prob()] and [detect_extinct()],
-#' therefore if you modify the output of [scenario_sim()] before passing
-#' to [extinct_prob()] be careful not to drop the attribute (e.g.
-#' from subsetting the `data.table`).
+#'   attribute which is used by [control_prob()], [extinct_prob()],
+#'   [detect_control()], and [detect_extinct()], therefore if you modify the
+#'   output of [scenario_sim()] before passing to any of the [control]
+#'   functions be careful not to drop the attribute (e.g. from subsetting the
+#'   `data.table`).
 #'
 #' @param scenario a `data.table`: weekly cases output by [scenario_sim()]
-#' @param extinction_week By default `NULL` but also accepts a positive
-#'   `integer` scalar or `integer` vector to test if the outbreak has gone
-#'   extinct (i.e. no new cases) by this week (zero indexed):
-#'   * By default (`NULL`) the extinction status is stored in the output of
-#'     `scenario_sim()` which is supplied to the `scenario` argument. If
-#'     `extinction_week` is not specified or specified as `NULL` then the
-#'     pre-computed extinction status from the outbreak simulation will be used.
-#'     This is defined as all infectious cases have had the opportunity to
-#'     transmit but no new cases are generated.
-#'   * A single `integer` to test if extinction has occurred by this week.
-#'     For example, `extinction_week = 5` tests whether the outbreak is
-#'     extinct by week 5 (inclusive) until the end of the outbreak.
-#'   * An `integer` vector of length two can be supplied to provide the lower
-#'     and upper bounds (inclusive) of the week range to test for whether
-#'     extinction occurred by this window. For example
-#'     `extinction_week = c(5, 10)` will test whether the outbreak went extinct
-#'     by week 5 and there we no new cases between weeks 5 and 10 (inclusive).
-#'   * An `integer` vector of length _n_ can be supplied to provide the weeks
-#'     to test for whether extinction occurred by this window. For example
-#'     `extinction_week = 12:16` will test that there are no new infections
-#'     between 12 and 16 weeks after the initial cases (inclusive). These
-#'     integer sequences will most likely be contiguous but the function
-#'     does allow non-contiguous integer sequences.
+#' @param control_week,extinction_week an `integer` scalar, `integer` vector,
+#'   or `NULL` (default): the week (zero-indexed) or set of weeks over which
+#'   to test whether the outbreak has been controlled / went extinct.
 #'
-#'   If extinction occurs before the `extinction_week` window then the outbreak
-#'   extinction is considered extinct, however, if the extinction occurs within
-#'   the `extinction_week` window it is not considered extinct. Therefore,
-#'   using a single `integer` for `extinction_week` and thinking of this as
-#'   "_has the outbreak gone extinct by week X_".
+#'   `control_week` is used by [control_prob()] and [detect_control()];
+#'   `extinction_week` is used by [extinct_prob()] and [detect_extinct()].
+#'   They behave identically and differ only in name and intent:
+#'   `control_week` is paired with `control_threshold` and tests whether
+#'   `weekly_cases <= control_threshold` across the specified weeks;
+#'   `extinction_week` is the same test fixed to `control_threshold = 0`,
+#'   i.e. `weekly_cases == 0` (extinction). Permitted forms:
+#'   * `NULL` (default): use the pre-computed extinction status (`extinct`
+#'     attribute) attached to the output of [scenario_sim()] — a
+#'     true-extinction flag set when all infectious cases had the opportunity
+#'     to transmit but no new cases were generated. Only valid when
+#'     `control_threshold = 0`; when `control_threshold > 0` an explicit
+#'     `control_week` is required and the default will error.
+#'   * A single `integer`, e.g. `5`: tests the window from week `5` through
+#'     the last simulated week. For example, `extinction_week = 5` tests
+#'     whether no cases occur from week 5 onwards; `control_week = 5` with
+#'     `control_threshold = 10` tests whether weekly cases stay at most 10
+#'     from week 5 onwards.
+#'   * An `integer` vector of length two, e.g. `c(5, 10)`: gives the
+#'     lower and upper bounds (inclusive) of the week range to test. For
+#'     example, `extinction_week = c(5, 10)` tests whether there were no new
+#'     cases between weeks 5 and 10 (inclusive); `control_week = c(5, 10)`
+#'     tests whether weekly cases stayed within `control_threshold` over the
+#'     same window.
+#'   * An `integer` vector of length _n_ (n >= 2), e.g. `12:16`: the exact
+#'     set of weeks to test (12, 13, 14, 15, 16). For example,
+#'     `extinction_week = 12:16` tests for no new cases across those weeks,
+#'     and `control_week = 12:16` tests for weekly cases at or below
+#'     `control_threshold` across them. Sequences are usually contiguous but
+#'     non-contiguous integer vectors are allowed.
+#'
+#'   An outbreak that becomes controlled / extinct *before* the start of the
+#'   window is still classified as controlled / extinct, because every week
+#'   within the window then satisfies `weekly_cases <= control_threshold`. An
+#'   outbreak that only becomes controlled / extinct *partway through* the
+#'   window is not, because at least one in-window week exceeded the
+#'   threshold. So a single `integer` for `extinction_week` reads naturally
+#'   as "_has the outbreak gone extinct by week X_".
+#'
+#' @param control_threshold an `integer` scalar: the threshold number of weekly
+#'   cases to classify the outbreak as controlled. By default it is `0` which
+#'   is outbreak extinction. Values greater than zero correspond
+#'   to control defined under outbreak suppression strategies, e.g., if weekly
+#'   cases do not exceed 100 (`control_threshold = 100`), then the outbreak is
+#'   said to be under control in that period.
 #'
 #' @importFrom data.table setDT fifelse data.table
 #'
 #' @return
+#' `control_prob()`: a single `numeric` with the probability of control
+#'
 #' `extinct_prob()`: a single `numeric` with the probability of extinction
 #'
-#' `detect_extinct()`: a `data.table`, with two columns `sim` and `extinct`, for a binary
-#' classification of whether the outbreak went extinct in each simulation
-#' replicate. `1` is an outbreak that went extinct, `0` if not.
+#' `detect_control()`: a `data.table`, with two columns `sim` and `control`,
+#'   for a binary classification of whether the outbreak was controlled in each
+#'   simulation replicate. `1` is an outbreak that was controlled, `0` if not.
+#'
+#' `detect_extinct()`: a `data.table`, with two columns `sim` and `extinct`,
+#'   for a binary classification of whether the outbreak went extinct in each
+#'   simulation replicate. `1` is an outbreak that went extinct, `0` if not.
 #'
 #' @examples
 #' res <- scenario_sim(
@@ -202,66 +241,111 @@ presymptomatic_transmission_to_alpha <- function(presymptomatic_transmission) {
 #'
 #' # calculate extinction as no new cases between weeks 12 and 16 of the outbreak
 #' extinct_prob(res, extinction_week = 12:16)
-#' @name extinction
+#'
+#' # calculate probability of control as weekly cases at or below 5
+#' # between weeks 12 and 16 of the outbreak
+#' control_prob(res, control_week = 12:16, control_threshold = 5)
+#'
+#' # determine for each simulation whether weekly cases stayed at or below 5
+#' # between weeks 12 and 16
+#' detect_control(res, control_week = 12:16, control_threshold = 5)
+#'
+#' # calculate probability of control as weekly cases at or below 10
+#' # from week 20 to the end of the outbreak
+#' control_prob(res, control_week = 20, control_threshold = 10)
+#' @name control
 NULL
 
-#' @rdname extinction
+#' @rdname control
+#' @export
+control_prob <- function(scenario,
+                         control_week = NULL,
+                         control_threshold = 0) {
+
+  extinct_runs <- detect_control(
+    scenario = scenario,
+    control_week = control_week,
+    control_threshold = control_threshold
+  )
+  sum(extinct_runs$control) / max(scenario$sim)
+}
+
+#' @rdname control
 #' @export
 extinct_prob <- function(scenario,
                          extinction_week = NULL) {
 
-  extinct_runs <- detect_extinct(
+  control_prob(
     scenario = scenario,
-    extinction_week = extinction_week
+    control_week = extinction_week,
+    control_threshold = 0
   )
-  sum(extinct_runs$extinct) / max(scenario$sim)
 }
 
-#' @rdname extinction
+#' @rdname control
 #' @autoglobal
 #' @export
-detect_extinct <- function(scenario,
-                           extinction_week = NULL) {
+detect_control <- function(scenario,
+                           control_week = NULL,
+                           control_threshold = 0) {
 
   extinct <- attr(scenario, which = "extinct", exact = TRUE)
-  if (is.null(extinction_week)) {
-    if (!is.null(extinct)) {
-      message(
-        "Calculating extinction using the extinction status from ",
-        "the simulation."
-      )
-      return(
-        data.table(
-          sim = 1:max(scenario$sim),
-          extinct = as.integer(extinct)
-        )
-      )
-    } else {
+
+  if (is.null(control_week)) {
+    if (control_threshold > 0) {
       stop(
-        "`extinction_week` not specified and `scenario` is missing the ",
-        "`extinct` attribute.\n Use `scenario_sim()` to simulate `scenario`, ",
-        "or specify `extinction_week`.",
+        "`control_threshold` > 0 but `control_week` is `NULL`.\n Please ",
+        "specify `control_week`.",
         call. = FALSE
       )
     }
+    if (is.null(extinct)) {
+      stop(
+        "`control_week/extinction_week` not specified and `scenario` is ",
+        "missing the `extinct` attribute.\n Use `scenario_sim()` to simulate ",
+        "`scenario`, or specify `control_week/extinction_week`.",
+        call. = FALSE
+      )
+    }
+    message(
+      "Calculating extinction using the extinction status from ",
+      "the simulation."
+    )
+    return(
+      data.table(
+        sim = 1:max(scenario$sim),
+        control = as.integer(extinct)
+      )
+    )
   }
 
   checkmate::assert_data_frame(scenario)
-  checkmate::assert_integerish(extinction_week, min.len = 1)
+  checkmate::assert_integerish(control_week, min.len = 1)
+  checkmate::assert_integerish(
+    control_threshold, len = 1, lower = 0, any.missing = FALSE
+  )
 
-  if (length(extinction_week) == 1) {
-    extinction_week <- extinction_week:max(scenario$week)
-  } else if (length(extinction_week) == 2) {
-    extinction_week <- min(extinction_week):max(extinction_week)
+  if (length(control_week) == 1) {
+    control_week <- control_week:max(scenario$week)
+  } else if (length(control_week) == 2) {
+    control_week <- min(control_week):max(control_week)
   }
   stopifnot(
-    "`extinction_week` not in simulated outbreak data" =
-      all(extinction_week %in% scenario$week)
+    "`control_week/extinction_week` not in simulated outbreak data" =
+      all(control_week %in% scenario$week)
   )
-  message(
-    "Calculating extinction as no new cases within weeks: ",
-    min(extinction_week), " to ", max(extinction_week), " (inclusive)."
-  )
+  if (control_threshold == 0) {
+    message(
+      "Calculating extinction as no new cases within weeks: ",
+      min(control_week), " to ", max(control_week), " (inclusive)."
+    )
+  } else {
+    message(
+      "Calculating control as weekly cases <= ", control_threshold,
+      " within weeks: ",
+      min(control_week), " to ", max(control_week), " (inclusive)."
+    )
+  }
 
   cap_cases <- attr(scenario, which = "cap_cases", exact = TRUE)
   stopifnot(
@@ -270,10 +354,25 @@ detect_extinct <- function(scenario,
   )
 
   scenario <- setDT(scenario)
-  scenario <- scenario[week %in% extinction_week]
+  scenario <- scenario[week %in% control_week]
   scenario[, list(
-    extinct = fifelse(all(weekly_cases == 0 & cumulative < cap_cases), 1, 0)
+    control = fifelse(all(weekly_cases <= control_threshold & cumulative < cap_cases), 1, 0)
   ), by = sim][]
+}
+
+#' @rdname control
+#' @autoglobal
+#' @export
+detect_extinct <- function(scenario,
+                           extinction_week = NULL) {
+
+  extinct <- detect_control(
+    scenario = scenario,
+    control_week = extinction_week,
+    control_threshold = 0
+  )
+  colnames(extinct) <- c("sim", "extinct")
+  extinct
 }
 
 # The following function is copied from `testthat:::on_ci()` from the
