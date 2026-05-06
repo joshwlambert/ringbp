@@ -90,33 +90,45 @@ test_that("presymptomatic_transmission_to_alpha errors from non-convergence", {
   )
 })
 
-test_that("extinct_prob works as expected", {
-  cap <- 100
-  sims <- 5
-  res <- scenario_sim(
-    n = sims,
-    initial_cases = 5,
-    offspring = offspring_opts(
-      community = \(n) rnbinom(n = n, mu = 2.5, size = 0.16),
-      isolated = \(n) rnbinom(n = n, mu = 0, size = 1)
+sims <- 2
+# outbreak scenario for control/extinction unit tests
+test_scenario <- scenario_sim(
+  n = sims,
+  initial_cases = 5,
+  offspring = offspring_opts(
+    community = \(n) rnbinom(n = n, mu = 2.5, size = 0.16),
+    isolated = \(n) rnbinom(n = n, mu = 0, size = 1)
+  ),
+  delays = delay_opts(
+    incubation_period = \(n) stats::rweibull(n = n, shape = 2.32, scale = 6.49),
+    onset_to_isolation = \(n) stats::rweibull(n = n, shape = 2.5, scale = 5)
+  ),
+  event_probs = event_prob_opts(
+    asymptomatic = 0,
+    presymptomatic_transmission = 0.3,
+    symptomatic_ascertained = 0
+  ),
+  interventions = intervention_opts(),
+  sim = sim_opts(cap_max_days = 100, cap_cases = 100)
+)
+
+test_that("extinct_prob matches control_prob when control_threshold = 0", {
+  expect_identical(
+    control_prob(
+      scenario = test_scenario,
+      control_week = 5:10,
+      control_threshold = 0
     ),
-    delays = delay_opts(
-      incubation_period = \(n) stats::rweibull(n = n, shape = 2.32, scale = 6.49),
-      onset_to_isolation = \(n) stats::rweibull(n = n, shape = 2.5, scale = 5)
-    ),
-    event_probs = event_prob_opts(
-      asymptomatic = 0,
-      presymptomatic_transmission = 0.3,
-      symptomatic_ascertained = 0
-    ),
-    interventions = intervention_opts(),
-    sim = sim_opts(cap_max_days = 100, cap_cases = cap)
+    extinct_prob(scenario = test_scenario, extinction_week = 5:10)
   )
+})
+
+test_that("extinct_prob works as expected", {
   # TODO: remove this step and improve tests
   # strip extinct attribute to test extinction calculation
-  attr(res, which = "extinct") <- NULL
+  attr(test_scenario, which = "extinct") <- NULL
 
-  r1 <- extinct_prob(res, extinction_week = 12:14)
+  r1 <- extinct_prob(test_scenario, extinction_week = 12:14)
   expect_true(r1 <= 1)
   expect_true(r1 >= 0)
   expect_length(r1, 1)
@@ -127,19 +139,19 @@ test_that("extinct_prob works as expected", {
   expect_true(is_wholenumber(r1 * sims))
 
   # Manually build an output with known proportion of extinctions
-  res2 <- res[c(1, 2, 1, 2), ]
-  res2$sim <- c(1, 1, 2, 2)
+  test_scenario2 <- test_scenario[c(1, 2, 1, 2), ]
+  test_scenario2$sim <- c(1, 1, 2, 2)
   # Enforce that second sim did not have cases in final week.
   # Ignoring cases_per_gen becayse I think this function works on weekly cases.
-  res2$weekly_cases[4] <- 0
-  res2$cumulative[4] <- res2$cumulative[3]
+  test_scenario2$weekly_cases[4] <- 0
+  test_scenario2$cumulative[4] <- test_scenario2$cumulative[3]
 
   # Enforce that first sim has cases both weeks.
   # Ignoring cases_per_gen becayse I think this function works on weekly cases.
-  res2$weekly_cases[1:2] <- c(1, 1)
-  res2$cumulative[1:2] <- c(1, 2)
+  test_scenario2$weekly_cases[1:2] <- c(1, 1)
+  test_scenario2$cumulative[1:2] <- c(1, 2)
 
-  r2 <- extinct_prob(res2, extinction_week = 1)
+  r2 <- extinct_prob(test_scenario2, extinction_week = 1)
   expect_equal(r2, 0.5)
 
   # Run some sims with almost certain outputs
@@ -161,7 +173,7 @@ test_that("extinct_prob works as expected", {
       symptomatic_ascertained = 0
     ),
     interventions = intervention_opts(),
-    sim = sim_opts(cap_max_days = 100, cap_cases = cap)
+    sim = sim_opts(cap_max_days = 100, cap_cases = 100)
   )
   # TODO: remove this step and improve tests
   # strip extinct attribute to test extinction calculation
@@ -199,127 +211,101 @@ test_that("extinct_prob works as expected", {
 })
 
 test_that("extinct_prob extinction_week argument works", {
-  cap <- 100
-  sims <- 2
-  res <- scenario_sim(
-    n = 2,
-    initial_cases = 5,
-    offspring = offspring_opts(
-      community = \(n) rnbinom(n = n, mu = 2.5, size = 0.16),
-      isolated = \(n) rnbinom(n = n, mu = 0, size = 1)
-    ),
-    delays = delay_opts(
-      incubation_period = \(n) stats::rweibull(n = n, shape = 2.32, scale = 6.49),
-      onset_to_isolation = \(n) stats::rweibull(n = n, shape = 2.5, scale = 5)
-    ),
-    event_probs = event_prob_opts(
-      asymptomatic = 0,
-      presymptomatic_transmission = 0.3,
-      symptomatic_ascertained = 0
-    ),
-    interventions = intervention_opts(),
-    sim = sim_opts(cap_max_days = 100, cap_cases = cap)
-  )
+
   # TODO: remove this step and improve tests
   # strip extinct attribute to test extinction calculation
-  attr(res, which = "extinct") <- NULL
+  attr(test_scenario, which = "extinct") <- NULL
 
   # Manually build an output with known proportion of extinctions
-  res2 <- res[c(1, 2, 1, 2), ]
-  res2$sim <- c(1, 1, 2, 2)
+  test_scenario2 <- test_scenario[c(1, 2, 1, 2), ]
+  test_scenario2$sim <- c(1, 1, 2, 2)
 
   # Enforce that second sim did not have cases in final week.
   # Ignoring cases_per_gen becayse I think this function works on weekly cases.
-  res2$weekly_cases[4] <- 0
-  res2$cumulative[4] <- res2$cumulative[3]
+  test_scenario2$weekly_cases[4] <- 0
+  test_scenario2$cumulative[4] <- test_scenario2$cumulative[3]
 
   # Enforce that first sim has cases both weeks.
   # Ignoring cases_per_gen becayse I think this function works on weekly cases.
-  res2$weekly_cases[1:2] <- c(1, 1)
-  res2$cumulative[1:2] <- c(1, 2)
+  test_scenario2$weekly_cases[1:2] <- c(1, 1)
+  test_scenario2$cumulative[1:2] <- c(1, 2)
 
-  r2 <- extinct_prob(res2, extinction_week = 1)
+  r2 <- extinct_prob(test_scenario2, extinction_week = 1)
   expect_equal(r2, 0.5)
 
   # Now add a week and test extinction_week = 1:2
   # Simple case of cases in week 1 and 2
-  res3 <- res[c(1, 2, 3), ]
-  res3$weekly_cases[1:3] <- c(1, 1, 1)
-  res3$cumulative[1:3] <- c(1, 2, 3)
-  r3 <- extinct_prob(res3, extinction_week = 1:2)
+  test_scenario3 <- test_scenario[c(1, 2, 3), ]
+  test_scenario3$weekly_cases[1:3] <- c(1, 1, 1)
+  test_scenario3$cumulative[1:3] <- c(1, 2, 3)
+  r3 <- extinct_prob(test_scenario3, extinction_week = 1:2)
   expect_equal(r3, 0)
 
   # Simple case of no cases in week 1 or 2
-  res4 <- res[c(1, 2, 3), ]
-  res4$weekly_cases[1:3] <- c(1, 0, 0)
-  res4$cumulative[1:3] <- c(1, 1, 1)
-  r4 <- extinct_prob(res4, extinction_week = 1:2)
+  test_scenario4 <- test_scenario[c(1, 2, 3), ]
+  test_scenario4$weekly_cases[1:3] <- c(1, 0, 0)
+  test_scenario4$cumulative[1:3] <- c(1, 1, 1)
+  r4 <- extinct_prob(test_scenario4, extinction_week = 1:2)
   expect_equal(r4, 1)
 
   # Case of cases in week 1 but not 2 (by the definition used in this function
   # this is not an extinction). Test here that extinction_week 1:2 says no
   # extintion but extinction_week 2 says extinction.
-  res5 <- res[c(1, 2, 3), ]
-  res5$weekly_cases[1:3] <- c(1, 1, 0)
-  res5$cumulative[1:3] <- c(1, 2, 2)
-  r5 <- extinct_prob(res5, extinction_week = 1:2)
+  test_scenario5 <- test_scenario[c(1, 2, 3), ]
+  test_scenario5$weekly_cases[1:3] <- c(1, 1, 0)
+  test_scenario5$cumulative[1:3] <- c(1, 2, 2)
+  r5 <- extinct_prob(test_scenario5, extinction_week = 1:2)
   expect_equal(r5, 0)
 
-  r5b <- extinct_prob(res5, extinction_week = 2)
+  r5b <- extinct_prob(test_scenario5, extinction_week = 2)
   expect_equal(r5b, 1)
 
   # Case of cases in week 2 but not 1 (by all sensible definitions is not an
   # extinction). Test here that extinction_week 1:2 says no extinction and
   # neither does extinction_week 2.
-  res6 <- res[c(1, 2, 3), ]
-  res6$weekly_cases[1:3] <- c(1, 0, 1)
-  res6$cumulative[1:3] <- c(1, 1, 2)
-  r6 <- extinct_prob(res6, extinction_week = 1:2)
+  test_scenario6 <- test_scenario[c(1, 2, 3), ]
+  test_scenario6$weekly_cases[1:3] <- c(1, 0, 1)
+  test_scenario6$cumulative[1:3] <- c(1, 1, 2)
+  r6 <- extinct_prob(test_scenario6, extinction_week = 1:2)
   expect_equal(r6, 0)
 
-  r6b <- extinct_prob(res6, extinction_week = 2)
+  r6b <- extinct_prob(test_scenario6, extinction_week = 2)
   expect_equal(r6b, 0)
 })
 
-test_that("detect_extinct works", {
-  cap <- 100
-  sims <- 2
-  res <- scenario_sim(
-    n = 2,
-    initial_cases = 5,
-    offspring = offspring_opts(
-      community = \(n) rnbinom(n = n, mu = 2.5, size = 0.16),
-      isolated = \(n) rnbinom(n = n, mu = 0, size = 1)
-    ),
-    delays = delay_opts(
-      incubation_period = \(n) stats::rweibull(n = n, shape = 2.32, scale = 6.49),
-      onset_to_isolation = \(n) stats::rweibull(n = n, shape = 2.5, scale = 5)
-    ),
-    event_probs = event_prob_opts(
-      asymptomatic = 0,
-      presymptomatic_transmission = 0.3,
-      symptomatic_ascertained = 0
-    ),
-    interventions = intervention_opts(),
-    sim = sim_opts(cap_max_days = 100, cap_cases = cap)
+test_that("detect_control matches detect_extinct when control_threshold = 0", {
+  control <- detect_control(
+    scenario = test_scenario,
+    control_week = 5:10,
+    control_threshold = 0
   )
+  extinct <- detect_extinct(scenario = test_scenario, extinction_week = 5:10)
+  expect_identical(colnames(control), c("sim", "control"))
+  expect_identical(colnames(extinct), c("sim", "extinct"))
+  colnames(control) <- c("x", "y")
+  colnames(extinct) <- c("x", "y")
+  expect_identical(control, extinct)
+})
+
+test_that("detect_extinct works", {
+
   # TODO: remove this step and improve tests
   # strip extinct attribute to test extinction calculation
-  attr(res, which = "extinct") <- NULL
+  attr(test_scenario, which = "extinct") <- NULL
 
   # Manually build an output with known proportion of extinctions
-  res2 <- res[c(1, 2, 1, 2), ]
-  res2$sim <- c(1, 1, 2, 2)
+  test_scenario2 <- test_scenario[c(1, 2, 1, 2), ]
+  test_scenario2$sim <- c(1, 1, 2, 2)
   # Enforce that second sim did not have cases in final week.
   # Ignoring cases_per_gen becayse I think this function works on weekly cases.
-  res2$weekly_cases[4] <- 0
-  res2$cumulative[4] <- res2$cumulative[3]
+  test_scenario2$weekly_cases[4] <- 0
+  test_scenario2$cumulative[4] <- test_scenario2$cumulative[3]
   # Enforce that first sim has cases both weeks.
   # Ignoring cases_per_gen becayse I think this function works on weekly cases.
-  res2$weekly_cases[1:2] <- c(1, 1)
-  res2$cumulative[1:2] <- c(1, 2)
+  test_scenario2$weekly_cases[1:2] <- c(1, 1)
+  test_scenario2$cumulative[1:2] <- c(1, 2)
 
-  r2 <- detect_extinct(res2, extinction_week = 1)
+  r2 <- detect_extinct(test_scenario2, extinction_week = 1)
   # The types in the output is a bit random. So just force all to doubles.
   r2 <- data.table(r2)[, lapply(.SD, as.double)]
 
@@ -328,10 +314,10 @@ test_that("detect_extinct works", {
 
   # Now add a week and test extinction_week = 1:2
   # Simple case of cases in week 1 and 2
-  res3 <- res[c(1, 2, 3), ]
-  res3$weekly_cases[1:3] <- c(1, 1, 1)
-  res3$cumulative[1:3] <- c(1, 2, 3)
-  r3 <- detect_extinct(res3, extinction_week = 1:2)
+  test_scenario3 <- test_scenario[c(1, 2, 3), ]
+  test_scenario3$weekly_cases[1:3] <- c(1, 1, 1)
+  test_scenario3$cumulative[1:3] <- c(1, 2, 3)
+  r3 <- detect_extinct(test_scenario3, extinction_week = 1:2)
   # The types in the output is a bit random. So just force all to doubles.
   r3 <- data.table(r3)[, lapply(.SD, as.double)]
 
@@ -339,10 +325,10 @@ test_that("detect_extinct works", {
   expect_equal(r3, expect3)
 
   # Simple case of no cases in week 1 or 2
-  res4 <- res[c(1, 2, 3), ]
-  res4$weekly_cases[1:3] <- c(1, 0, 0)
-  res4$cumulative[1:3] <- c(1, 1, 1)
-  r4 <- detect_extinct(res4, extinction_week = 1:2)
+  test_scenario4 <- test_scenario[c(1, 2, 3), ]
+  test_scenario4$weekly_cases[1:3] <- c(1, 0, 0)
+  test_scenario4$cumulative[1:3] <- c(1, 1, 1)
+  r4 <- detect_extinct(test_scenario4, extinction_week = 1:2)
   # The types in the output is a bit random. So just force all to doubles.
   r4 <- data.table(r4)[, lapply(.SD, as.double)]
 
@@ -352,17 +338,17 @@ test_that("detect_extinct works", {
   # Case of cases in week 1 but not 2 (by the definition used in this function
   # this is not an extinction). Test here that extinction_week 1:2 says
   # extinction by extinction_week 2 does not.
-  res5 <- res[c(1, 2, 3), ]
-  res5$weekly_cases[1:3] <- c(1, 1, 0)
-  res5$cumulative[1:3] <- c(1, 2, 2)
-  r5 <- detect_extinct(res5, extinction_week = 1:2)
+  test_scenario5 <- test_scenario[c(1, 2, 3), ]
+  test_scenario5$weekly_cases[1:3] <- c(1, 1, 0)
+  test_scenario5$cumulative[1:3] <- c(1, 2, 2)
+  r5 <- detect_extinct(test_scenario5, extinction_week = 1:2)
   # The types in the output is a bit random. So just force all to doubles.
   r5 <- data.table(r5)[, lapply(.SD, as.double)]
 
   expect5 <- data.table(sim = c(1.0), extinct = c(0.0))
   expect_equal(r5, expect5)
 
-  r5b <- detect_extinct(res5, extinction_week = 2)
+  r5b <- detect_extinct(test_scenario5, extinction_week = 2)
   # The types in the output is a bit random. So just force all to doubles.
   r5b <- data.table(r5b)[, lapply(.SD, as.double)]
 
@@ -372,20 +358,142 @@ test_that("detect_extinct works", {
   # Case of cases in week 2 but not 1 (by all sensible definitions is not an
   # extinction). Test here that extinction_week 1:2 says extintion and
   # extinction_week 2 does as well.
-  res6 <- res[c(1, 2, 3), ]
-  res6$weekly_cases[1:3] <- c(1, 0, 1)
-  res6$cumulative[1:3] <- c(1, 1, 2)
-  r6 <- detect_extinct(res5, extinction_week = 1:2)
+  test_scenario6 <- test_scenario[c(1, 2, 3), ]
+  test_scenario6$weekly_cases[1:3] <- c(1, 0, 1)
+  test_scenario6$cumulative[1:3] <- c(1, 1, 2)
+  r6 <- detect_extinct(test_scenario5, extinction_week = 1:2)
   # The types in the output is a bit random. So just force all to doubles.
   r6 <- data.table(r6)[, lapply(.SD, as.double)]
 
   expect6 <- data.table(sim = c(1.0), extinct = c(0.0))
   expect_equal(r6, expect5)
 
-  r6b <- detect_extinct(res5, extinction_week = 2)
+  r6b <- detect_extinct(test_scenario5, extinction_week = 2)
 
   r6b <- data.table(r6b)[, lapply(.SD, as.double)]
 
   expect6b <- data.table(sim = c(1.0), extinct = c(0.0))
   expect_equal(r6b, expect5b)
+})
+
+test_that("detect_control works for control_threshold > 0", {
+  # r0 of 0, should always go extinct.
+  no_transmission_scenario <- scenario_sim(
+    n = 2,
+    initial_cases = 5,
+    offspring = offspring_opts(
+      community = \(n) rnbinom(n = n, mu = 0, size = 0.16),
+      isolated = \(n) rnbinom(n = n, mu = 0, size = 1)
+    ),
+    delays = delay_opts(
+      incubation_period = \(n) stats::rweibull(n = n, shape = 2.32, scale = 6.49),
+      onset_to_isolation = \(n) stats::rweibull(n = n, shape = 2.5, scale = 5)
+    ),
+    event_probs = event_prob_opts(
+      asymptomatic = 0,
+      presymptomatic_transmission = 0.3,
+      symptomatic_ascertained = 0
+    ),
+    interventions = intervention_opts(),
+    sim = sim_opts(cap_max_days = 100, cap_cases = 100)
+  )
+
+  # r0 of 0.8, with seed should go extinct after producing a few cases
+  set.seed(1)
+  low_transmission_scenario <- scenario_sim(
+    n = 2,
+    initial_cases = 5,
+    offspring = offspring_opts(
+      community = \(n) rnbinom(n = n, mu = 0.8, size = 1),
+      isolated = \(n) rnbinom(n = n, mu = 0, size = 1)
+    ),
+    delays = delay_opts(
+      incubation_period = \(n) stats::rweibull(n = n, shape = 2.32, scale = 6.49),
+      onset_to_isolation = \(n) stats::rweibull(n = n, shape = 2.5, scale = 5)
+    ),
+    event_probs = event_prob_opts(
+      asymptomatic = 0,
+      presymptomatic_transmission = 0.3,
+      symptomatic_ascertained = 0
+    ),
+    interventions = intervention_opts(),
+    sim = sim_opts(cap_max_days = 100, cap_cases = 100)
+  )
+
+  # r0 of 100, should always go to case cap
+  high_transmission_scenario <- scenario_sim(
+    n = 2,
+    initial_cases = 5,
+    offspring = offspring_opts(
+      community = \(n) rep(100, n),
+      isolated = \(n) rep(100, n)
+    ),
+    delays = delay_opts(
+      incubation_period = \(n) stats::rweibull(n = n, shape = 2.32, scale = 6.49),
+      onset_to_isolation = \(n) stats::rweibull(n = n, shape = 2.5, scale = 5)
+    ),
+    event_probs = event_prob_opts(
+      asymptomatic = 0,
+      presymptomatic_transmission = 0.3,
+      symptomatic_ascertained = 0
+    ),
+    interventions = intervention_opts(),
+    sim = sim_opts(cap_max_days = 100, cap_cases = 100)
+  )
+  # no transmission scenario is always controlled
+  expect_identical(
+    detect_control(
+      scenario = no_transmission_scenario,
+      control_week = 5,
+      control_threshold = 10
+    ),
+    data.table(sim = c(1L, 2L), control = c(1, 1))
+  )
+  # outbreak with low transmission has fewer than 50 cases a week
+  expect_identical(
+    detect_control(
+      scenario = low_transmission_scenario,
+      control_week = 5,
+      control_threshold = 50
+    ),
+    data.table(sim = c(1L, 2L), control = c(1, 1))
+  )
+  # outbreak with high transmission is always uncontrolled
+  expect_identical(
+    detect_control(
+      scenario = high_transmission_scenario,
+      control_week = 5,
+      control_threshold = 10
+    ),
+    data.table(sim = c(1L, 2L), control = c(0, 0))
+  )
+})
+
+test_that("detect_control errors when control_threshold > 0 and control_week is NULL", {
+  expect_error(
+    detect_control(scenario = test_scenario, control_threshold = 100),
+    regexp = "(control_threshold)*(> 0 but)*(control_week)*(is)*(NULL)"
+  )
+})
+
+test_that("detect_control errors when control_week is NULL, without extinct attribute ", {
+  attr(test_scenario, which = "extinct") <- NULL
+  expect_error(
+    detect_control(scenario = test_scenario),
+    regexp = paste0(
+      "(control_week/extinction_week)*(not specified)*(missing the)*",
+      "(extinct)*(attribute)"
+    )
+  )
+})
+
+test_that("detect_control prints message when control_threshold > 0", {
+  expect_message(
+    detect_control(
+      scenario = test_scenario,
+      control_week = 5:10,
+      control_threshold = 100
+    ),
+    regexp = "(Calculating control as weekly cases)*(100 within weeks)*(5 to 10)",
+  )
 })
