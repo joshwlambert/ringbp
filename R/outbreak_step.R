@@ -76,7 +76,8 @@
 #' case_data <- outbreak_setup(
 #'   initial_cases = 5,
 #'   delays = delays,
-#'   event_probs = event_probs
+#'   event_probs = event_probs,
+#'   interventions = interventions
 #' )
 #' case_data
 #' # generate next generation of cases
@@ -170,10 +171,10 @@ outbreak_step <- function(case_data,
   # draw a sample for missing and test result
   prob_samples[
     infector_asymptomatic == FALSE,
-    traced := runif(.N) < event_probs$symptomatic_traced
+    traced := runif(.N) < event_probs$symptomatic_traced(exposure)
   ][
     asymptomatic == FALSE & self_isolate == FALSE,
-    test_positive := runif(.N) <= interventions$test_sensitivity
+    test_positive := runif(.N) <= interventions$test_sensitivity(onset)
   ]
 
   # isolation time is the earliest of three pathways; each pathway holds the
