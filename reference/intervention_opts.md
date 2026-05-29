@@ -55,8 +55,8 @@ intervention_opts(quarantine = FALSE)
 #> $test_sensitivity
 #> function (t) 
 #> rep(x, length(t))
-#> <bytecode: 0x562b5a5c5bd8>
-#> <environment: 0x562b582e4c60>
+#> <bytecode: 0x560b84d5c610>
+#> <environment: 0x560b83d71368>
 #> 
 #> attr(,"class")
 #> [1] "ringbp_intervention_opts"
@@ -69,8 +69,8 @@ intervention_opts(quarantine = TRUE)
 #> $test_sensitivity
 #> function (t) 
 #> rep(x, length(t))
-#> <bytecode: 0x562b5a5c5bd8>
-#> <environment: 0x562b59568620>
+#> <bytecode: 0x560b84d5c610>
+#> <environment: 0x560b83364450>
 #> 
 #> attr(,"class")
 #> [1] "ringbp_intervention_opts"
@@ -83,8 +83,8 @@ intervention_opts(test_sensitivity = 0.8)
 #> $test_sensitivity
 #> function (t) 
 #> rep(x, length(t))
-#> <bytecode: 0x562b5a5c5bd8>
-#> <environment: 0x562b59bf8760>
+#> <bytecode: 0x560b84d5c610>
+#> <environment: 0x560b825a6748>
 #> 
 #> attr(,"class")
 #> [1] "ringbp_intervention_opts"
@@ -100,7 +100,7 @@ intervention_opts(
 #> $test_sensitivity
 #> function (t) 
 #> ifelse(t > 30, yes = 0.8, no = 0.5)
-#> <environment: 0x562b5889d470>
+#> <environment: 0x560b83ea2000>
 #> 
 #> attr(,"class")
 #> [1] "ringbp_intervention_opts"
