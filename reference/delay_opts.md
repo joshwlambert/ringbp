@@ -77,12 +77,12 @@ delay_opts(
 #> $incubation_period
 #> function (n) 
 #> rweibull(n = n, shape = 2.32, scale = 6.49)
-#> <environment: 0x560b76cb66a0>
+#> <environment: 0x55b94daa02a8>
 #> 
 #> $onset_to_isolation
 #> function (n) 
 #> rweibull(n = n, shape = 1.65, scale = 4.28)
-#> <environment: 0x560b76cb66a0>
+#> <environment: 0x55b94daa02a8>
 #> 
 #> $latent_period
 #> [1] 0
@@ -90,7 +90,7 @@ delay_opts(
 #> $onset_to_self_isolation
 #> function (n) 
 #> rep(Inf, n)
-#> <environment: 0x560b763f8f10>
+#> <environment: 0x55b94dab6788>
 #> 
 #> attr(,"class")
 #> [1] "ringbp_delay_opts"
