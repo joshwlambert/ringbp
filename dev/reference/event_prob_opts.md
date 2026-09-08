@@ -85,8 +85,8 @@ event_prob_opts(
 #> $symptomatic_traced
 #> function (t) 
 #> rep(x, length(t))
-#> <bytecode: 0x561f50953530>
-#> <environment: 0x561f50953178>
+#> <bytecode: 0x562d15f73c90>
+#> <environment: 0x562d15f74048>
 #> 
 #> $symptomatic_self_isolate
 #> [1] 0
@@ -113,7 +113,7 @@ event_prob_opts(
 #> $symptomatic_traced
 #> function (t) 
 #> ifelse(t < 30, 0, 0.5)
-#> <environment: 0x561f50940020>
+#> <environment: 0x562d15f7e8e0>
 #> 
 #> $symptomatic_self_isolate
 #> [1] 0

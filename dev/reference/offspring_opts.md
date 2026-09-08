@@ -61,17 +61,17 @@ offspring_opts(
 #> $community
 #> function (n) 
 #> rnbinom(n = n, mu = 2.5, size = 0.16)
-#> <environment: 0x561f4a19f148>
+#> <environment: 0x562d164f4620>
 #> 
 #> $isolated
 #> function (n) 
 #> rnbinom(n = n, mu = 0.5, size = 1)
-#> <environment: 0x561f4a19f148>
+#> <environment: 0x562d164f4620>
 #> 
 #> $asymptomatic
 #> function (n) 
 #> rnbinom(n = n, mu = 2.5, size = 0.16)
-#> <environment: 0x561f4a19f148>
+#> <environment: 0x562d164f4620>
 #> 
 #> attr(,"class")
 #> [1] "ringbp_offspring_opts"
