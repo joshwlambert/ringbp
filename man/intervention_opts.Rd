@@ -4,7 +4,11 @@
 \alias{intervention_opts}
 \title{Create a list of intervention settings to run the \pkg{ringbp} model}
 \usage{
-intervention_opts(quarantine = FALSE, test_sensitivity = 1)
+intervention_opts(
+  quarantine = FALSE,
+  test_sensitivity = 1,
+  test_capacity = Inf
+)
 }
 \arguments{
 \item{quarantine}{a \code{logical} scalar: whether quarantine is in effect. If
@@ -32,6 +36,27 @@ false-negative result means the case is not isolated via the testing
 pathway (see \code{\link[=outbreak_step]{outbreak_step()}} for how isolation times are assigned).
 Default is 1, which assumes all tested individuals get a positive test
 result.}
+
+\item{test_capacity}{a \code{numeric} scalar (\code{Inf} by default), a \code{function}
+of time (\code{t}), or a \code{function} of current outbreak size (\code{N}): the
+number of tests available per day.
+
+A scalar is a constant daily capacity over the whole simulation. A
+\verb{function(t)} accepts a \code{numeric} vector of days since the exposure of
+the initial cases on day 0, and must return a \code{numeric} vector of
+capacities of the same length (like \code{test_sensitivity}, it is called
+once with the full vector of days, not once per day, so it must be
+vectorised), e.g. \verb{\\(t) ifelse(t < 30, 0, 500)} for a testing programme
+that activates on day 30. A \verb{function(N)} returns the capacity given the
+current cumulative outbreak size \code{N}, allowing capacity to scale with
+the outbreak.
+
+Both symptomatic cases presenting for testing and uninfected traced
+contacts compete for the same daily quota (see \code{\link[=outbreak_step]{outbreak_step()}});
+unused capacity on a day carries over to the next day, but an
+individual who is not allocated a test on their detection day is not
+re-queued -- they are simply not isolated via the testing pathway.
+Default is \code{Inf} (unlimited testing).}
 }
 \value{
 A \code{list} with class \verb{<ringbp_intervention_opts>}.
@@ -54,4 +79,8 @@ intervention_opts(test_sensitivity = 0.8)
 intervention_opts(
   test_sensitivity = \(t) ifelse(t > 30, yes = 0.8, no = 0.5)
 )
+
+# a testing programme that activates on day 30 with a capacity of
+# 500 tests per day
+intervention_opts(test_capacity = \(t) ifelse(t < 30, 0, 500))
 }

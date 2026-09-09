@@ -281,6 +281,26 @@ event_prob_opts <- function(asymptomatic,
 #'   pathway (see [outbreak_step()] for how isolation times are assigned).
 #'   Default is 1, which assumes all tested individuals get a positive test
 #'   result.
+#' @param test_capacity a `numeric` scalar (`Inf` by default), a `function`
+#'   of time (`t`), or a `function` of current outbreak size (`N`): the
+#'   number of tests available per day.
+#'
+#'   A scalar is a constant daily capacity over the whole simulation. A
+#'   `function(t)` accepts a `numeric` vector of days since the exposure of
+#'   the initial cases on day 0, and must return a `numeric` vector of
+#'   capacities of the same length (like `test_sensitivity`, it is called
+#'   once with the full vector of days, not once per day, so it must be
+#'   vectorised), e.g. `\(t) ifelse(t < 30, 0, 500)` for a testing programme
+#'   that activates on day 30. A `function(N)` returns the capacity given the
+#'   current cumulative outbreak size `N`, allowing capacity to scale with
+#'   the outbreak.
+#'
+#'   Both symptomatic cases presenting for testing and uninfected traced
+#'   contacts compete for the same daily quota (see [outbreak_step()]);
+#'   unused capacity on a day carries over to the next day, but an
+#'   individual who is not allocated a test on their detection day is not
+#'   re-queued -- they are simply not isolated via the testing pathway.
+#'   Default is `Inf` (unlimited testing).
 #'
 #' @return A `list` with class `<ringbp_intervention_opts>`.
 #' @export
@@ -300,10 +320,21 @@ event_prob_opts <- function(asymptomatic,
 #' intervention_opts(
 #'   test_sensitivity = \(t) ifelse(t > 30, yes = 0.8, no = 0.5)
 #' )
-intervention_opts <- function(quarantine = FALSE, test_sensitivity = 1) {
+#'
+#' # a testing programme that activates on day 30 with a capacity of
+#' # 500 tests per day
+#' intervention_opts(test_capacity = \(t) ifelse(t < 30, 0, 500))
+intervention_opts <- function(quarantine = FALSE,
+                              test_sensitivity = 1,
+                              test_capacity = Inf) {
   checkmate::assert_logical(quarantine, any.missing = FALSE, len = 1)
   test_sensitivity <- as_prob_function(test_sensitivity)
-  opts <- list(quarantine = quarantine, test_sensitivity = test_sensitivity)
+  test_capacity <- as_capacity_function(test_capacity)
+  opts <- list(
+    quarantine = quarantine,
+    test_sensitivity = test_sensitivity,
+    test_capacity = test_capacity
+  )
   class(opts) <- "ringbp_intervention_opts"
   opts
 }
