@@ -31,20 +31,28 @@
 #'   `symptomatic_self_isolate` (from [event_prob_opts()]), entering isolation
 #'   an `onset_to_self_isolation` delay (from [delay_opts()]) after symptom
 #'   onset. Self-isolating cases are not tested.
-#' * **Testing**: a symptomatic case that does not self-isolate is a
-#'   candidate for testing, entering isolation an `onset_to_isolation` delay
-#'   after symptom onset if it is (a) allocated one of the day's tests,
-#'   subject to `test_capacity` (from [intervention_opts()], shared with
-#'   uninfected traced contacts -- see [sample_testing()]), and (b) that test
-#'   returns a positive result, with probability `test_sensitivity` (from
-#'   [intervention_opts()]). Neither a missed allocation nor a false-negative
-#'   result isolates the case via this pathway.
+#' * **Testing**: a symptomatic case that does not self-isolate, and is not
+#'   already destined for exposure-based quarantine (see **Tracing** below),
+#'   is a candidate for testing, entering isolation an `onset_to_isolation`
+#'   delay after symptom onset if it is (a) allocated one of the day's
+#'   tests, subject to `test_capacity` (from [intervention_opts()], shared
+#'   with uninfected traced contacts -- see [sample_testing()]), and (b)
+#'   that test returns a positive result, with probability
+#'   `test_sensitivity` (from [intervention_opts()]). Neither a missed
+#'   allocation nor a false-negative result isolates the case via this
+#'   pathway. A case already destined for quarantine is excluded from
+#'   testing entirely, since quarantine isolates it independent of the test
+#'   result -- it does not compete for capacity that gates other
+#'   individuals' isolation.
 #' * **Tracing**: a case whose infector is symptomatic is traced with
 #'   probability `symptomatic_traced` (from [event_prob_opts()]). When
 #'   `quarantine` is active (from [intervention_opts()]) tracing is
 #'   exposure-based: a traced case is isolated when its infector is isolated,
-#'   regardless of its own symptom status. Without `quarantine`, only a traced
-#'   symptomatic case is isolated, and no earlier than its own symptom onset.
+#'   regardless of its own symptom status, and is excluded from the testing
+#'   pathway above. Without `quarantine`, only a traced symptomatic case is
+#'   isolated, no earlier than its own symptom onset, and remains eligible
+#'   for testing (able to be isolated earlier via a positive test, or as
+#'   confirmation alongside tracing).
 #'
 #' Self-isolation and testing are symptom-based, so asymptomatic cases are
 #' isolated only via the tracing pathway, and only when `quarantine` is active.
@@ -225,9 +233,14 @@ outbreak_step <- function(case_data,
   # non-self-isolating cases, as if a test were available and positive. This
   # is the day sample_testing() debits the test quota against; it is
   # corrected below once we know which cases were actually allocated a test
-  # and which of those tested positive.
+  # and which of those tested positive. Cases already destined for
+  # exposure-based quarantine (quarantine active and traced -- see the
+  # tracing pathway below) are excluded: quarantine isolates independent of
+  # infection status, so these cases have no bearing on a test result and
+  # should not compete for capacity that gates other individuals' isolation.
   prob_samples[
-    asymptomatic == FALSE & self_isolate == FALSE,
+    asymptomatic == FALSE & self_isolate == FALSE &
+      !(interventions$quarantine & traced),
     test_isolation_time := onset + delays$onset_to_isolation(.N)
   ]
 

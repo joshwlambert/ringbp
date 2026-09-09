@@ -57,20 +57,28 @@ never isolated (\code{isolated_time} is \code{Inf}):
 \code{symptomatic_self_isolate} (from \code{\link[=event_prob_opts]{event_prob_opts()}}), entering isolation
 an \code{onset_to_self_isolation} delay (from \code{\link[=delay_opts]{delay_opts()}}) after symptom
 onset. Self-isolating cases are not tested.
-\item \strong{Testing}: a symptomatic case that does not self-isolate is a
-candidate for testing, entering isolation an \code{onset_to_isolation} delay
-after symptom onset if it is (a) allocated one of the day's tests,
-subject to \code{test_capacity} (from \code{\link[=intervention_opts]{intervention_opts()}}, shared with
-uninfected traced contacts -- see \code{\link[=sample_testing]{sample_testing()}}), and (b) that test
-returns a positive result, with probability \code{test_sensitivity} (from
-\code{\link[=intervention_opts]{intervention_opts()}}). Neither a missed allocation nor a false-negative
-result isolates the case via this pathway.
+\item \strong{Testing}: a symptomatic case that does not self-isolate, and is not
+already destined for exposure-based quarantine (see \strong{Tracing} below),
+is a candidate for testing, entering isolation an \code{onset_to_isolation}
+delay after symptom onset if it is (a) allocated one of the day's
+tests, subject to \code{test_capacity} (from \code{\link[=intervention_opts]{intervention_opts()}}, shared
+with uninfected traced contacts -- see \code{\link[=sample_testing]{sample_testing()}}), and (b)
+that test returns a positive result, with probability
+\code{test_sensitivity} (from \code{\link[=intervention_opts]{intervention_opts()}}). Neither a missed
+allocation nor a false-negative result isolates the case via this
+pathway. A case already destined for quarantine is excluded from
+testing entirely, since quarantine isolates it independent of the test
+result -- it does not compete for capacity that gates other
+individuals' isolation.
 \item \strong{Tracing}: a case whose infector is symptomatic is traced with
 probability \code{symptomatic_traced} (from \code{\link[=event_prob_opts]{event_prob_opts()}}). When
 \code{quarantine} is active (from \code{\link[=intervention_opts]{intervention_opts()}}) tracing is
 exposure-based: a traced case is isolated when its infector is isolated,
-regardless of its own symptom status. Without \code{quarantine}, only a traced
-symptomatic case is isolated, and no earlier than its own symptom onset.
+regardless of its own symptom status, and is excluded from the testing
+pathway above. Without \code{quarantine}, only a traced symptomatic case is
+isolated, no earlier than its own symptom onset, and remains eligible
+for testing (able to be isolated earlier via a positive test, or as
+confirmation alongside tracing).
 }
 
 Self-isolation and testing are symptom-based, so asymptomatic cases are
