@@ -24,8 +24,10 @@ event probabilities for the \pkg{ringbp} model, returned by
 
 \item{interventions}{a \code{list} with class \verb{<ringbp_intervention_opts>}:
 the intervention settings for the \pkg{ringbp} model, returned by
-\code{\link[=intervention_opts]{intervention_opts()}}. Contains 2 elements: \code{quarantine} and
-\code{test_sensitivity}}
+\code{\link[=intervention_opts]{intervention_opts()}}. Contains 3 elements: \code{quarantine},
+\code{test_sensitivity} and \code{test_capacity}. May also carry a \code{test_quota}
+element (a \code{data.table} of remaining capacity by day, carried over from
+a previous call) -- if absent, every day starts at full capacity.}
 }
 \value{
 \code{data.table} of cases in outbreak so far. \code{data.table} columns are:
@@ -41,6 +43,12 @@ the intervention settings for the \pkg{ringbp} model, returned by
 \item \verb{$isolated_time}: \code{numeric}
 \item \verb{$sampled}: \code{logical}
 }
+
+The returned \code{data.table} also carries a \code{test_quota} attribute: a
+\code{data.table} (\code{day}, \code{tests_remaining}) with the test capacity remaining
+after index-case testing, by day. Pass it on as
+\code{interventions$test_quota} before the first \code{\link[=outbreak_step]{outbreak_step()}} call so
+capacity already used on index cases carries over (see \code{\link[=outbreak_model]{outbreak_model()}}).
 }
 \description{
 Set up initial cases for branching process

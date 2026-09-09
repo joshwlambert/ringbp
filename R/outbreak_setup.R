@@ -16,6 +16,12 @@
 #' * `$self_isolate`: `logical`
 #' * `$isolated_time`: `numeric`
 #' * `$sampled`: `logical`
+#'
+#' The returned `data.table` also carries a `test_quota` attribute: a
+#' `data.table` (`day`, `tests_remaining`) with the test capacity remaining
+#' after index-case testing, by day. Pass it on as
+#' `interventions$test_quota` before the first [outbreak_step()] call so
+#' capacity already used on index cases carries over (see [outbreak_model()]).
 #' @autoglobal
 #' @export
 #' @importFrom data.table data.table
@@ -63,18 +69,40 @@ outbreak_setup <- function(initial_cases, delays, event_probs, interventions) {
     test_positive = FALSE
   )
 
-  # isolate each symptomatic case if they test positive after an
-  # onset-to-isolation delay after their symptom onset time, each case
-  # seeds an independent outbreak
-  case_data <- case_data[
+  # provisional isolation time for symptomatic index cases, as if a test
+  # were available and positive; corrected below once test capacity has
+  # been allocated and results drawn (see sample_testing())
+  case_data[
     asymptomatic == FALSE & self_isolate == FALSE,
-    test_positive := runif(.N) <= interventions$test_sensitivity(onset)
-  ][
-    test_positive == TRUE,
     isolated_time := onset + delays$onset_to_isolation(.N)
-  ][,
-    test_positive := NULL
   ]
 
+  # index cases compete for the same daily test quota as later generations
+  # (see sample_testing()); each case is debited on its own provisional
+  # isolated_time (its detection day)
+  eligible_idx <- which(is.finite(case_data$isolated_time))
+  day_max <- ceiling(max(case_data$isolated_time[eligible_idx], 0))
+  day_seq <- 0:day_max
+  test_quota <- data.table(
+    day = day_seq,
+    tests_remaining = interventions$test_capacity(day_seq, initial_cases)
+  )
+  if (length(eligible_idx) > 0) {
+    tested <- allocate_tests(
+      day = as.integer(floor(case_data$isolated_time[eligible_idx])),
+      test_quota = test_quota
+    )
+    case_data[
+      eligible_idx[tested],
+      test_positive := runif(.N) <= interventions$test_sensitivity(onset)
+    ]
+  }
+
+  # isolation requires a positive, allocated test; unallocated cases keep
+  # the FALSE placeholder, same as a false-negative result
+  case_data[test_positive == FALSE, isolated_time := Inf]
+  case_data[, test_positive := NULL]
+
+  data.table::setattr(case_data, "test_quota", test_quota)
   case_data[]
 }
