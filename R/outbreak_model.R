@@ -18,7 +18,7 @@
 #'    * `cases_per_gen`: the cases per generation (`list`)
 #'
 #' The `$outbreak_ts` element also carries an `extinct` attribute: a `logical`
-#' recording whether the outbreak went extinct. See [extinction] functions for
+#' recording whether the outbreak went extinct. See [control] functions for
 #' the definition of extinction.
 #' @autoglobal
 #' @export
@@ -74,6 +74,10 @@ outbreak_model <- function(initial_cases,
     interventions = interventions
   )
 
+  # carry forward the test quota remaining after index-case testing so
+  # capacity already used is not handed out again in the first generation
+  interventions$test_quota <- attr(case_data, "test_quota", exact = TRUE)
+
   # create outbreak statistic vectors
   effective_r0_vect <- c()
   cases_in_gen_vect <- c()
@@ -93,6 +97,7 @@ outbreak_model <- function(initial_cases,
     case_data <- out$cases
     effective_r0_vect <- c(effective_r0_vect, out$effective_r0)
     cases_in_gen_vect <- c(cases_in_gen_vect, out$cases_in_gen)
+    interventions$test_quota <- out$test_quota
   }
 
   # only warn if non-zero latent period and any transmission

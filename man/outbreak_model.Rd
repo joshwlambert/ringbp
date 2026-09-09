@@ -20,8 +20,8 @@ or starting cases which are all assumed to be missed by contact tracing
 
 \item{offspring}{a \code{list} with class \verb{<ringbp_offspring_opts>}: the
 offspring distribution \code{function}s for the \pkg{ringbp} model, returned
-by \code{\link[=offspring_opts]{offspring_opts()}}. Contains three elements: \code{community}, \code{isolated},
-and \code{asymptomatic}}
+by \code{\link[=offspring_opts]{offspring_opts()}}. Contains six elements: \code{community}, \code{isolated},
+\code{asymptomatic}, and the three \verb{*_contact_prob_infect} probabilities}
 
 \item{delays}{a \code{list} with class \verb{<ringbp_delay_opts>}: the
 delay distribution \code{function}s for the \pkg{ringbp} model, returned
@@ -36,8 +36,10 @@ event probabilities for the \pkg{ringbp} model, returned by
 
 \item{interventions}{a \code{list} with class \verb{<ringbp_intervention_opts>}:
 the intervention settings for the \pkg{ringbp} model, returned by
-\code{\link[=intervention_opts]{intervention_opts()}}. Contains 2 elements: \code{quarantine} and
-\code{test_sensitivity}}
+\code{\link[=intervention_opts]{intervention_opts()}}. Contains 3 elements: \code{quarantine},
+\code{test_sensitivity} and \code{test_capacity}. May also carry a \code{test_quota}
+element (a \code{data.table} of remaining capacity by day, carried over from
+a previous call) -- if absent, every day starts at full capacity.}
 
 \item{sim}{a \code{list} with class \verb{<ringbp_sim_opts>}: the simulation control
 options for the \pkg{ringbp} model, returned by \code{\link[=sim_opts]{sim_opts()}}}
@@ -62,7 +64,7 @@ whole simulation (\code{numeric})
 }
 
 The \verb{$outbreak_ts} element also carries an \code{extinct} attribute: a \code{logical}
-recording whether the outbreak went extinct. See \link{extinction} functions for
+recording whether the outbreak went extinct. See \link{control} functions for
 the definition of extinction.
 }
 \description{
