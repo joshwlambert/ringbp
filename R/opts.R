@@ -5,6 +5,15 @@
 #'   `community` meaning transmission of subclinical cases to be equal to
 #'   clinical cases unless specified otherwise.
 #'
+#' Each offspring distribution returns a count of *contacts* per infector.
+#'   Each contact independently becomes an infection with probability equal to
+#'   the corresponding `*_contact_prob_infect`. When all three
+#'   `*_contact_prob_infect` are `1` (the default) every contact is an
+#'   infection and the model reduces to the original branching process.
+#'   Uninfected contacts of *symptomatic* infectors are eligible to be tested
+#'   under [intervention_opts()] (see `test_capacity`); contacts of
+#'   asymptomatic infectors are never traced.
+#'
 #' @param community a `function`: a random number generating `function`
 #'   that samples from the community (non-isolated) offspring distribution,
 #'   the `function` accepts a single `integer` argument specifying the number
@@ -22,6 +31,21 @@
 #'   specifying the number of times to sample the offspring distribution (i.e.
 #'   the length of the `function` output). Will be specified as the same as
 #'   the `community` offspring distribution if left unspecified
+#' @param ... [dots] Not used, will warn if arguments are passed. Are used to
+#'   ensure users don't accidentally pass offspring distributions to the
+#'   probability of infection (`*_prob_infect`) arguments.
+#' @param community_contact_prob_infect a `numeric` scalar probability
+#'   (between 0 and 1 inclusive): probability that a contact made by a
+#'   community (non-isolated, symptomatic) infector causes infection. Default
+#'   is 1 (i.e. every community contact is an infection).
+#' @param isolated_contact_prob_infect a `numeric` scalar probability (between
+#'   0 and 1 inclusive): probability that a contact made by an isolated
+#'   infector causes infection. Applies once a case has been isolated,
+#'   whether it reached isolation via the symptomatic or the asymptomatic
+#'   pathway (see `isolated`). Default is 1.
+#' @param asymptomatic_contact_prob_infect a `numeric` scalar probability
+#'   (between 0 and 1 inclusive): probability that a contact made by an
+#'   asymptomatic, non-isolated infector causes infection. Default is 1.
 #'
 #' @return A `list` with class `<ringbp_offspring_opts>`.
 #' @export
@@ -36,16 +60,38 @@
 #'   isolated = \(n) rnbinom(n = n, mu = 0.5, size = 1),
 #'   asymptomatic = \(n) rnbinom(n = n, mu = 2.5, size = 0.16)
 #' )
-offspring_opts <- function(community, isolated, asymptomatic = community) {
+#'
+#' # community contacts each have a 5% chance of becoming an infection;
+#' # isolated and asymptomatic contacts are infections with certainty
+#' offspring_opts(
+#'   community = \(n) rnbinom(n = n, mu = 50, size = 0.16),
+#'   isolated = \(n) rnbinom(n = n, mu = 0.5, size = 1),
+#'   asymptomatic = \(n) rnbinom(n = n, mu = 50, size = 0.16),
+#'   community_contact_prob_infect = 0.05
+#' )
+offspring_opts <- function(community,
+                           isolated,
+                           asymptomatic = community,
+                           ...,
+                           community_contact_prob_infect = 1,
+                           isolated_contact_prob_infect = 1,
+                           asymptomatic_contact_prob_infect = 1) {
 
+  chkDots(...)
   check_dist_func(community, dist_name = "community")
   check_dist_func(isolated, dist_name = "isolated")
   check_dist_func(asymptomatic, dist_name = "asymptomatic")
+  checkmate::assert_number(community_contact_prob_infect, lower = 0, upper = 1)
+  checkmate::assert_number(isolated_contact_prob_infect, lower = 0, upper = 1)
+  checkmate::assert_number(asymptomatic_contact_prob_infect, lower = 0, upper = 1)
 
   opts <- list(
     community = community,
     isolated = isolated,
-    asymptomatic = asymptomatic
+    asymptomatic = asymptomatic,
+    community_contact_prob_infect = community_contact_prob_infect,
+    isolated_contact_prob_infect = isolated_contact_prob_infect,
+    asymptomatic_contact_prob_infect = asymptomatic_contact_prob_infect
   )
 
   class(opts) <- "ringbp_offspring_opts"

@@ -4,7 +4,15 @@
 \alias{offspring_opts}
 \title{Create a list of offspring distributions to run the \pkg{ringbp} model}
 \usage{
-offspring_opts(community, isolated, asymptomatic = community)
+offspring_opts(
+  community,
+  isolated,
+  asymptomatic = community,
+  ...,
+  community_contact_prob_infect = 1,
+  isolated_contact_prob_infect = 1,
+  asymptomatic_contact_prob_infect = 1
+)
 }
 \arguments{
 \item{community}{a \code{function}: a random number generating \code{function}
@@ -26,6 +34,25 @@ distribution, the \code{function} accepts a single \code{integer} argument
 specifying the number of times to sample the offspring distribution (i.e.
 the length of the \code{function} output). Will be specified as the same as
 the \code{community} offspring distribution if left unspecified}
+
+\item{...}{\link{dots} Not used, will warn if arguments are passed. Are used to
+ensure users don't accidentally pass offspring distributions to the
+probability of infection (\verb{*_prob_infect}) arguments.}
+
+\item{community_contact_prob_infect}{a \code{numeric} scalar probability
+(between 0 and 1 inclusive): probability that a contact made by a
+community (non-isolated, symptomatic) infector causes infection. Default
+is 1 (i.e. every community contact is an infection).}
+
+\item{isolated_contact_prob_infect}{a \code{numeric} scalar probability (between
+0 and 1 inclusive): probability that a contact made by an isolated
+infector causes infection. Applies once a case has been isolated,
+whether it reached isolation via the symptomatic or the asymptomatic
+pathway (see \code{isolated}). Default is 1.}
+
+\item{asymptomatic_contact_prob_infect}{a \code{numeric} scalar probability
+(between 0 and 1 inclusive): probability that a contact made by an
+asymptomatic, non-isolated infector causes infection. Default is 1.}
 }
 \value{
 A \code{list} with class \verb{<ringbp_offspring_opts>}.
@@ -37,6 +64,15 @@ Create a list of offspring distributions to run the \pkg{ringbp} model
 If \code{asymptomatic} is not provided it will be specified as the same as
 \code{community} meaning transmission of subclinical cases to be equal to
 clinical cases unless specified otherwise.
+
+Each offspring distribution returns a count of \emph{contacts} per infector.
+Each contact independently becomes an infection with probability equal to
+the corresponding \verb{*_contact_prob_infect}. When all three
+\verb{*_contact_prob_infect} are \code{1} (the default) every contact is an
+infection and the model reduces to the original branching process.
+Uninfected contacts of \emph{symptomatic} infectors are eligible to be tested
+under \code{\link[=intervention_opts]{intervention_opts()}} (see \code{test_capacity}); contacts of
+asymptomatic infectors are never traced.
 }
 \examples{
 # Negative binomial offspring distributions with:
@@ -47,5 +83,14 @@ offspring_opts(
   community = \(n) rnbinom(n = n, mu = 2.5, size = 0.16),
   isolated = \(n) rnbinom(n = n, mu = 0.5, size = 1),
   asymptomatic = \(n) rnbinom(n = n, mu = 2.5, size = 0.16)
+)
+
+# community contacts each have a 5\% chance of becoming an infection;
+# isolated and asymptomatic contacts are infections with certainty
+offspring_opts(
+  community = \(n) rnbinom(n = n, mu = 50, size = 0.16),
+  isolated = \(n) rnbinom(n = n, mu = 0.5, size = 1),
+  asymptomatic = \(n) rnbinom(n = n, mu = 50, size = 0.16),
+  community_contact_prob_infect = 0.05
 )
 }
