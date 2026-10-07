@@ -22,9 +22,9 @@ by \code{\link[=delay_opts]{delay_opts()}}. Contains 4 elements: \code{incubatio
 
 \item{event_probs}{a \code{list} with class \verb{<ringbp_event_prob_opts>}: the
 event probabilities for the \pkg{ringbp} model, returned by
-\code{\link[=event_prob_opts]{event_prob_opts()}}. Contains 5 elements: \code{asymptomatic},
-\code{presymptomatic_transmission}, \code{alpha}, \code{symptomatic_traced} and
-\code{symptomatic_self_isolate}}
+\code{\link[=event_prob_opts]{event_prob_opts()}}. Contains 6 elements: \code{asymptomatic},
+\code{presymptomatic_transmission}, \code{alpha}, \code{symptomatic_traced},
+\code{symptomatic_self_isolate} and \code{healthcare_seeking}}
 
 \item{interventions}{a \code{list} with class \verb{<ringbp_intervention_opts>}:
 the intervention settings for the \pkg{ringbp} model, returned by
@@ -60,7 +60,9 @@ an \code{onset_to_self_isolation} delay (from \code{\link[=delay_opts]{delay_opt
 onset. Self-isolating cases are not tested.
 \item \strong{Testing}: a symptomatic case that does not self-isolate, and has not
 been notified by contact tracing before its symptom onset (see
-\strong{Tracing} below), is tested on its onset day. They enters isolation an
+\strong{Tracing} below), seeks a test on its onset day with probability
+\code{healthcare_seeking} (from \code{\link[=event_prob_opts]{event_prob_opts()}}); a case that does not
+seek a test is not tested. A case that is tested enters isolation an
 \code{onset_to_isolation} delay (see \code{\link[=delay_opts]{delay_opts()}}) after the test if (a) it
 is allocated one of that day's tests, subject to \code{test_capacity}
 (from \code{\link[=intervention_opts]{intervention_opts()}}, shared with traced contacts tested under
@@ -79,7 +81,7 @@ is exposure-based: a traced case is isolated when notified, regardless
 of its own symptom status, and is not tested. Without \code{quarantine}, a
 traced symptomatic case is isolated no earlier than its own symptom
 onset. A traced case not notified by its onset (including one whose
-infector is never isolated) is tested at onset like an untraced case.
+infector is never isolated) seeks a test at onset like an untraced case.
 \item \strong{Contact testing} (only when \code{test_traced} is \code{TRUE} in
 \code{\link[=intervention_opts]{intervention_opts()}}, which requires \code{quarantine} to be \code{FALSE}): a
 traced case not already tested at onset (i.e. one notified before its

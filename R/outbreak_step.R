@@ -12,9 +12,9 @@
 #'   `onset_to_isolation`, `latent_period` and `onset_to_self_isolation`
 #' @param event_probs a `list` with class `<ringbp_event_prob_opts>`: the
 #'   event probabilities for the \pkg{ringbp} model, returned by
-#'   [event_prob_opts()]. Contains 5 elements: `asymptomatic`,
-#'   `presymptomatic_transmission`, `alpha`, `symptomatic_traced` and
-#'   `symptomatic_self_isolate`
+#'   [event_prob_opts()]. Contains 6 elements: `asymptomatic`,
+#'   `presymptomatic_transmission`, `alpha`, `symptomatic_traced`,
+#'   `symptomatic_self_isolate` and `healthcare_seeking`
 #' @param interventions a `list` with class `<ringbp_intervention_opts>`:
 #'   the intervention settings for the \pkg{ringbp} model, returned by
 #'   [intervention_opts()]. Contains 4 elements: `quarantine`,
@@ -34,7 +34,9 @@
 #'   onset. Self-isolating cases are not tested.
 #' * **Testing**: a symptomatic case that does not self-isolate, and has not
 #'   been notified by contact tracing before its symptom onset (see
-#'   **Tracing** below), is tested on its onset day. They enters isolation an
+#'   **Tracing** below), seeks a test on its onset day with probability
+#'   `healthcare_seeking` (from [event_prob_opts()]); a case that does not
+#'   seek a test is not tested. A case that is tested enters isolation an
 #'   `onset_to_isolation` delay (see [delay_opts()]) after the test if (a) it
 #'   is allocated one of that day's tests, subject to `test_capacity`
 #'   (from [intervention_opts()], shared with traced contacts tested under
@@ -53,7 +55,7 @@
 #'   of its own symptom status, and is not tested. Without `quarantine`, a
 #'   traced symptomatic case is isolated no earlier than its own symptom
 #'   onset. A traced case not notified by its onset (including one whose
-#'   infector is never isolated) is tested at onset like an untraced case.
+#'   infector is never isolated) seeks a test at onset like an untraced case.
 #' * **Contact testing** (only when `test_traced` is `TRUE` in
 #'   [intervention_opts()], which requires `quarantine` to be `FALSE`): a
 #'   traced case not already tested at onset (i.e. one notified before its
@@ -267,18 +269,22 @@ outbreak_step <- function(case_data,
   ]
 
   # testing pathway, part 1: symptomatic, non-self-isolating cases that have
-  # not been notified by their onset seek a test on their onset day; this is
-  # the day sample_testing() debits the test quota against. A case notified
-  # before onset does not: with quarantine it is isolated when notified, and
-  # without quarantine it is isolated at onset via tracing, so a test would
-  # not change its isolation time. The provisional isolation time is the
-  # test time plus an `onset_to_isolation` delay (the time to process the
-  # test), as if a test were available and positive; it is corrected below
-  # once we know which cases were actually allocated a test and which of
-  # those tested positive.
+  # not been notified by their onset seek a test on their onset day with
+  # probability `healthcare_seeking`; this is the day sample_testing() debits
+  # the test quota against. A case that does not seek a test is not tested
+  # or isolated via testing, but can still be isolated via tracing. A case
+  # notified before onset does not seek a test: with quarantine it is
+  # isolated when notified, and without quarantine it is isolated at onset
+  # via tracing, so a test would not change its isolation time. The
+  # provisional isolation time is the test time plus an `onset_to_isolation`
+  # delay (the time to process the test), as if a test were available and
+  # positive; it is corrected below once we know which cases were actually
+  # allocated a test and which of those tested positive.
   prob_samples[
     asymptomatic == FALSE & self_isolate == FALSE & !notified_before_onset,
-    test_time := onset
+    test_time := fifelse(
+      sample_event(event_probs$healthcare_seeking(onset)), onset, Inf
+    )
   ]
   # testing pathway, contact testing: with `test_traced` active, a traced
   # case is tested when notified (its infector's isolation time), regardless
