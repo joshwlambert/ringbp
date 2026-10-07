@@ -4,13 +4,12 @@
 \alias{sample_testing}
 \title{Sample who gets tested given the daily testing capacity}
 \usage{
-sample_testing(prob_samples, uninfected_contacts, case_data, interventions, N)
+sample_testing(prob_samples, uninfected_contacts, case_data, interventions)
 }
 \arguments{
 \item{prob_samples}{a \code{data.table}: the new cases from one generation,
-produced by \code{\link[=outbreak_step]{outbreak_step()}}, with a provisional \code{test_isolation_time}
-already set for cases eligible for the testing pathway (symptomatic,
-not self-isolating).}
+produced by \code{\link[=outbreak_step]{outbreak_step()}}, with a finite \code{test_time} (the time the
+case is tested) already set for cases eligible for the testing pathway.}
 
 \item{uninfected_contacts}{a named \code{integer}-like vector: per-infector
 counts of successfully-traced uninfected contacts, produced by
@@ -23,13 +22,11 @@ up the \code{isolated_time} of each uninfected contact's infector.}
 
 \item{interventions}{a \code{list} with class \verb{<ringbp_intervention_opts>}:
 the intervention settings for the \pkg{ringbp} model, returned by
-\code{\link[=intervention_opts]{intervention_opts()}}. Contains 3 elements: \code{quarantine},
-\code{test_sensitivity} and \code{test_capacity}. May also carry a \code{test_quota}
+\code{\link[=intervention_opts]{intervention_opts()}}. Contains 4 elements: \code{quarantine},
+\code{test_sensitivity}, \code{test_capacity} and \code{test_traced}. May also carry a
+\code{test_quota}
 element (a \code{data.table} of remaining capacity by day, carried over from
 a previous call) -- if absent, every day starts at full capacity.}
-
-\item{N}{a \code{numeric} scalar: the current cumulative outbreak size, passed
-to \code{interventions$test_capacity()} for outbreak-size-dependent capacity.}
 }
 \value{
 A \code{list} with two elements:
@@ -42,10 +39,13 @@ generation.
 }
 }
 \description{
-Allocates tests to symptomatic new cases (via \code{prob_samples}) and to
-uninfected traced contacts of symptomatic infectors, subject to the
-daily testing capacity in \code{interventions$test_capacity}. Both compete
-for the same daily quota. Contacts of asymptomatic or otherwise
-undetected infectors are never traced and so never consume capacity.
+Allocates tests to new cases that are test candidates (via
+\code{prob_samples}: symptomatic cases tested at onset, and traced cases
+tested when notified under \code{test_traced}) and to uninfected traced
+contacts of symptomatic infectors (only passed in under \code{test_traced}),
+subject to the daily testing capacity in \code{interventions$test_capacity}.
+All compete for the same daily quota. Contacts of asymptomatic or
+otherwise undetected infectors are never traced and so never consume
+capacity.
 }
 \keyword{internal}

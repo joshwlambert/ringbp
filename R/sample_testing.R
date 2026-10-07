@@ -78,16 +78,18 @@ allocate_tests <- function(day, test_quota) {
 
 #' Sample who gets tested given the daily testing capacity
 #'
-#' Allocates tests to symptomatic new cases (via `prob_samples`) and to
-#'   uninfected traced contacts of symptomatic infectors, subject to the
-#'   daily testing capacity in `interventions$test_capacity`. Both compete
-#'   for the same daily quota. Contacts of asymptomatic or otherwise
-#'   undetected infectors are never traced and so never consume capacity.
+#' Allocates tests to new cases that are test candidates (via
+#'   `prob_samples`: symptomatic cases tested at onset, and traced cases
+#'   tested when notified under `test_traced`) and to uninfected traced
+#'   contacts of symptomatic infectors (only passed in under `test_traced`),
+#'   subject to the daily testing capacity in `interventions$test_capacity`.
+#'   All compete for the same daily quota. Contacts of asymptomatic or
+#'   otherwise undetected infectors are never traced and so never consume
+#'   capacity.
 #'
 #' @param prob_samples a `data.table`: the new cases from one generation,
-#'   produced by [outbreak_step()], with a provisional `test_isolation_time`
-#'   already set for cases eligible for the testing pathway (symptomatic,
-#'   not self-isolating).
+#'   produced by [outbreak_step()], with a finite `test_time` (the time the
+#'   case is tested) already set for cases eligible for the testing pathway.
 #' @param uninfected_contacts a named `integer`-like vector: per-infector
 #'   counts of successfully-traced uninfected contacts, produced by
 #'   [outbreak_step()] from [sample_offspring()]'s per-contact output after
@@ -95,8 +97,6 @@ allocate_tests <- function(day, test_quota) {
 #'   `caseid`.
 #' @param case_data a `data.table`: the full case data so far. Used to look
 #'   up the `isolated_time` of each uninfected contact's infector.
-#' @param N a `numeric` scalar: the current cumulative outbreak size, passed
-#'   to `interventions$test_capacity()` for outbreak-size-dependent capacity.
 #' @inheritParams outbreak_step
 #'
 #' @return A `list` with two elements:
@@ -110,19 +110,16 @@ allocate_tests <- function(day, test_quota) {
 sample_testing <- function(prob_samples,
                            uninfected_contacts,
                            case_data,
-                           interventions,
-                           N) {
+                           interventions) {
 
   tested <- rep(FALSE, nrow(prob_samples))
 
-  # cases eligible for the testing pathway: a finite `test_isolation_time`
-  # was set in outbreak_step() for symptomatic, non-self-isolating cases.
-  # The quota is debited on the day the case would be detected (its
-  # provisional test_isolation_time), whether or not the test ultimately
-  # comes back positive.
-  infected_idx <- which(is.finite(prob_samples$test_isolation_time))
+  # cases eligible for the testing pathway: a finite `test_time` was set in
+  # outbreak_step(). The quota is debited on the day the case is tested,
+  # whether or not the test ultimately comes back positive.
+  infected_idx <- which(is.finite(prob_samples$test_time))
   infected_dt <- data.table(
-    day = as.integer(floor(prob_samples$test_isolation_time[infected_idx])),
+    day = as.integer(floor(prob_samples$test_time[infected_idx])),
     infected = TRUE,
     orig_idx = infected_idx
   )
@@ -152,23 +149,19 @@ sample_testing <- function(prob_samples,
 
   eligible <- rbindlist(list(infected_dt, uninfected_dt), use.names = TRUE)
 
-  # build quota over a day range that covers both the testing-pathway days
-  # and the uninfected-contact days, splicing in carry-over from the
-  # previous generation where available. `interventions$test_quota` may be
-  # absent (NULL) if this is called without going through outbreak_model()
-  # (e.g. outbreak_step() used standalone before any quota exists), in
-  # which case every day starts at full capacity.
+  # extend the quota carried over from the previous generation so it covers
+  # both the testing-pathway days and the uninfected-contact days; carried
+  # days keep their remaining capacity (see extend_test_quota()).
+  # `interventions$test_quota` may be absent (NULL) if this is called without
+  # going through outbreak_model() (e.g. outbreak_step() used standalone
+  # before any quota exists), in which case every day starts at full
+  # capacity.
   day_max <- max(ceiling(max(prob_samples$onset, 0)), eligible$day, 0L)
-  day_seq <- 0:day_max
-  test_quota <- data.table(
-    day = day_seq,
-    tests_remaining = interventions$test_capacity(day_seq, N)
+  test_quota <- extend_test_quota(
+    test_quota = interventions$test_quota,
+    day_max = day_max,
+    test_capacity = interventions$test_capacity
   )
-  if (!is.null(interventions$test_quota)) {
-    test_quota[
-      interventions$test_quota, on = "day", tests_remaining := i.tests_remaining
-    ]
-  }
 
   if (nrow(eligible) == 0) {
     return(list(tested = tested, test_quota = test_quota))
