@@ -108,6 +108,18 @@ outbreak_setup <- function(initial_cases, delays, event_probs, interventions) {
   case_data[test_positive == FALSE, isolated_time := Inf]
   case_data[, test_positive := NULL]
 
+  # isolation adherence: index cases instructed to isolate after a positive
+  # test evaluated at the time they are instructed to isolate;
+  # non-adherent cases are never isolated
+  case_data[
+    is.finite(isolated_time),
+    isolated_time := fifelse(
+      sample_event(event_probs$isolation_adherence(isolated_time)),
+      isolated_time,
+      Inf
+    )
+  ]
+
   data.table::setattr(case_data, "test_quota", test_quota)
   case_data[]
 }
