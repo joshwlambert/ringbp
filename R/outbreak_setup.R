@@ -69,27 +69,26 @@ outbreak_setup <- function(initial_cases, delays, event_probs, interventions) {
     test_positive = FALSE
   )
 
-  # provisional isolation time for symptomatic index cases, as if a test
-  # were available and positive; corrected below once test capacity has
-  # been allocated and results drawn (see sample_testing())
+  # provisional isolation time for symptomatic index cases: tested on their
+  # onset day and isolated an onset_to_isolation delay later, as if a test
+  # were available and positive; corrected below once test capacity has been
+  # allocated and results drawn
   case_data[
     asymptomatic == FALSE & self_isolate == FALSE,
     isolated_time := onset + delays$onset_to_isolation(.N)
   ]
 
-  # index cases compete for the same daily test quota as later generations
-  # (see sample_testing()); each case is debited on its own provisional
-  # isolated_time (its detection day)
+  # index cases compete for the same daily test quota as later generations;
+  # each case is tested on its onset day
   eligible_idx <- which(is.finite(case_data$isolated_time))
-  day_max <- ceiling(max(case_data$isolated_time[eligible_idx], 0))
-  day_seq <- 0:day_max
-  test_quota <- data.table(
-    day = day_seq,
-    tests_remaining = interventions$test_capacity(day_seq, initial_cases)
+  test_quota <- extend_test_quota(
+    test_quota = NULL,
+    day_max = ceiling(max(case_data$isolated_time[eligible_idx], 0)),
+    test_capacity = interventions$test_capacity
   )
   if (length(eligible_idx) > 0) {
     tested <- allocate_tests(
-      day = as.integer(floor(case_data$isolated_time[eligible_idx])),
+      day = as.integer(floor(case_data$onset[eligible_idx])),
       test_quota = test_quota
     )
     case_data[
