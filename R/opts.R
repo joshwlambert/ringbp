@@ -275,45 +275,68 @@ event_prob_opts <- function(asymptomatic,
 #'   regardless of their own symptom status (so they may be isolated before
 #'   symptom onset, and asymptomatic traced contacts are isolated too). If
 #'   `FALSE`, only symptomatic traced contacts are isolated, no earlier than
-#'   their own symptom onset. Defaults to `FALSE`
+#'   their own symptom onset, unless `test_traced` is `TRUE`. Cannot be
+#'   `TRUE` together with `test_traced`, as quarantined contacts are not
+#'   tested. Defaults to `FALSE`
 #' @param test_sensitivity a `numeric` scalar probability (between 0
 #'   and 1 inclusive), or a `function` of time returning probabilities in
 #'   `[0, 1]`: the test sensitivity (i.e. probability that a true positive
 #'   tests positive).
 #'
 #'   A scalar is treated as a constant test sensitivity over the whole
-#'   simulation. A `function` accepts a `numeric` vector of times (symptom
-#'   onset time in days since the exposure of the initial cases on day 0) and
+#'   simulation. A `function` accepts a `numeric` vector of times (the time
+#'   of the test, in days since the exposure of the initial cases on day 0:
+#'   symptom onset, or notification for traced contacts tested under
+#'   `test_traced`) and
 #'   returns a `numeric` vector of probabilities of the same length, allowing
 #'   the test sensitivity to vary with time. For example,
 #'   `\(t) ifelse(t < 30, 0, 0.8)` represents a testing programme that
 #'   activates on day 30 with sensitivity 0.8.
 #'
-#'   Only symptomatic individuals that do not self-isolate are tested; a
-#'   false-negative result means the case is not isolated via the testing
-#'   pathway (see [outbreak_step()] for how isolation times are assigned).
+#'   Symptomatic individuals that do not self-isolate are tested at symptom
+#'   onset, and traced contacts are tested when notified if `test_traced`
+#'   is `TRUE`; a false-negative result means the case is not isolated via
+#'   the testing pathway (see [outbreak_step()] for how isolation times are
+#'   assigned).
 #'   Default is 1, which assumes all tested individuals get a positive test
 #'   result.
-#' @param test_capacity a `numeric` scalar (`Inf` by default), a `function`
-#'   of time (`t`), or a `function` of current outbreak size (`N`): the
-#'   number of tests available per day.
+#' @param test_capacity a `numeric` scalar (`Inf` by default), or a
+#'   `function` of time: the number of tests available per day.
 #'
 #'   A scalar is a constant daily capacity over the whole simulation. A
-#'   `function(t)` accepts a `numeric` vector of days since the exposure of
+#'   `function` accepts a `numeric` vector of days since the exposure of
 #'   the initial cases on day 0, and must return a `numeric` vector of
 #'   capacities of the same length (like `test_sensitivity`, it is called
 #'   once with the full vector of days, not once per day, so it must be
 #'   vectorised), e.g. `\(t) ifelse(t < 30, 0, 500)` for a testing programme
-#'   that activates on day 30. A `function(N)` returns the capacity given the
-#'   current cumulative outbreak size `N`, allowing capacity to scale with
-#'   the outbreak.
+#'   that activates on day 30. Capacity is rounded down to a whole number of
+#'   tests.
 #'
-#'   Both symptomatic cases presenting for testing and uninfected traced
-#'   contacts compete for the same daily quota (see [outbreak_step()]);
-#'   unused capacity on a day carries over to the next day, but an
-#'   individual who is not allocated a test on their detection day is not
-#'   re-queued -- they are simply not isolated via the testing pathway.
+#'   Symptomatic cases tested at onset and, if `test_traced` is `TRUE`,
+#'   traced contacts (infected or uninfected) tested when notified compete
+#'   for the same daily quota (see [outbreak_step()]). Each day has its own
+#'   quota: unused tests do not carry over to later days. An individual who
+#'   is not allocated a test on their test day is not re-queued -- they are
+#'   simply not isolated via the testing pathway.
 #'   Default is `Inf` (unlimited testing).
+#' @param test_traced a `logical` scalar: whether traced contacts are tested
+#'   when they are notified (i.e. when their infector is isolated). Can only
+#'   be `TRUE` when `quarantine` is `FALSE`: with quarantine, traced
+#'   contacts are isolated when notified regardless of a test result, so
+#'   they are not tested, and setting both to `TRUE` is an error.
+#'
+#'   If `TRUE`, every traced contact is tested when notified, whether
+#'   infected or not and regardless of symptom status, unless it was already
+#'   tested at symptom onset. A contact that tests positive is isolated an
+#'   `onset_to_isolation` delay (from [delay_opts()], the time to process the
+#'   test) after notification; one that tests negative, or is not allocated
+#'   a test, is isolated at symptom onset if symptomatic and is otherwise
+#'   not isolated. Tests used on traced contacts count against
+#'   `test_capacity`.
+#'
+#'   If `FALSE`, traced contacts are not tested because of tracing:
+#'   symptomatic traced contacts are isolated at symptom onset without a
+#'   test. Default is `FALSE`.
 #'
 #' @return A `list` with class `<ringbp_intervention_opts>`.
 #' @export
@@ -337,16 +360,36 @@ event_prob_opts <- function(asymptomatic,
 #' # a testing programme that activates on day 30 with a capacity of
 #' # 500 tests per day
 #' intervention_opts(test_capacity = \(t) ifelse(t < 30, 0, 500))
+#'
+#' # traced contacts are tested when notified, with a capacity of 500 tests
+#' # per day
+#' intervention_opts(test_capacity = 500, test_traced = TRUE)
 intervention_opts <- function(quarantine = FALSE,
                               test_sensitivity = 1,
-                              test_capacity = Inf) {
+                              test_capacity = Inf,
+                              test_traced = FALSE) {
   checkmate::assert_logical(quarantine, any.missing = FALSE, len = 1)
   test_sensitivity <- as_prob_function(test_sensitivity)
   test_capacity <- as_capacity_function(test_capacity)
+  checkmate::assert_logical(test_traced, any.missing = FALSE, len = 1)
+  if (quarantine && test_traced) {
+    stop(
+      "`quarantine = TRUE` and `test_traced = TRUE` cannot be used together ",
+      "in `intervention_opts()`.\n",
+      "With `quarantine = TRUE` all traced contacts are isolated when their ",
+      "infector is isolated, regardless of symptoms or test result, so they ",
+      "are not tested.\n",
+      "Use `quarantine = TRUE, test_traced = FALSE` to quarantine traced ",
+      "contacts, or `quarantine = FALSE, test_traced = TRUE` to test traced ",
+      "contacts and isolate those who test positive.",
+      call. = FALSE
+    )
+  }
   opts <- list(
     quarantine = quarantine,
     test_sensitivity = test_sensitivity,
-    test_capacity = test_capacity
+    test_capacity = test_capacity,
+    test_traced = test_traced
   )
   class(opts) <- "ringbp_intervention_opts"
   opts
