@@ -22,9 +22,10 @@ by \code{\link[=delay_opts]{delay_opts()}}. Contains 4 elements: \code{incubatio
 
 \item{event_probs}{a \code{list} with class \verb{<ringbp_event_prob_opts>}: the
 event probabilities for the \pkg{ringbp} model, returned by
-\code{\link[=event_prob_opts]{event_prob_opts()}}. Contains 6 elements: \code{asymptomatic},
+\code{\link[=event_prob_opts]{event_prob_opts()}}. Contains 7 elements: \code{asymptomatic},
 \code{presymptomatic_transmission}, \code{alpha}, \code{symptomatic_traced},
-\code{symptomatic_self_isolate} and \code{healthcare_seeking}}
+\code{symptomatic_self_isolate}, \code{healthcare_seeking} and
+\code{isolation_adherence}}
 
 \item{interventions}{a \code{list} with class \verb{<ringbp_intervention_opts>}:
 the intervention settings for the \pkg{ringbp} model, returned by
@@ -98,6 +99,13 @@ Self-isolation and symptom-driven testing are symptom-based, so
 asymptomatic cases are isolated only via the tracing pathway: by
 quarantine when \code{quarantine} is active, or by a positive test on
 notification when \code{test_traced} is active.
+
+A case instructed to isolate, after a positive test or via contact tracing
+(including quarantine), adheres to isolation with probability
+\code{isolation_adherence} (from \code{\link[=event_prob_opts]{event_prob_opts()}}), evaluated at the time
+they are instructed to isolate. A non-adherent case is not isolated via
+testing or contact tracing, and their contacts are not notified.
+Adherence does not apply to self-isolation.
 }
 \examples{
 offspring <- offspring_opts(

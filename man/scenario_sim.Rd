@@ -33,9 +33,10 @@ by \code{\link[=delay_opts]{delay_opts()}}. Contains 4 elements: \code{incubatio
 
 \item{event_probs}{a \code{list} with class \verb{<ringbp_event_prob_opts>}: the
 event probabilities for the \pkg{ringbp} model, returned by
-\code{\link[=event_prob_opts]{event_prob_opts()}}. Contains 6 elements: \code{asymptomatic},
+\code{\link[=event_prob_opts]{event_prob_opts()}}. Contains 7 elements: \code{asymptomatic},
 \code{presymptomatic_transmission}, \code{alpha}, \code{symptomatic_traced},
-\code{symptomatic_self_isolate} and \code{healthcare_seeking}}
+\code{symptomatic_self_isolate}, \code{healthcare_seeking} and
+\code{isolation_adherence}}
 
 \item{interventions}{a \code{list} with class \verb{<ringbp_intervention_opts>}:
 the intervention settings for the \pkg{ringbp} model, returned by
