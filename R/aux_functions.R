@@ -241,5 +241,15 @@ as_capacity_function <- function(test_capacity) {
   }
 }
 
+# draw whether an event occurs for each element of a vector of probabilities;
+# the runif() draw is skipped when every probability is 1 so that a default
+# probability of 1 does not perturb the random number stream
+sample_event <- function(prob) {
+  if (all(prob == 1)) {
+    return(rep(TRUE, length(prob)))
+  }
+  runif(length(prob)) < prob
+}
+
 # round a single non-negative capacity value to an integer, preserving Inf
 as_capacity_int <- function(x) if (is.finite(x)) as.integer(x) else Inf
