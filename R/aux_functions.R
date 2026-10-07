@@ -186,65 +186,48 @@ as_prob_function <- function(x) {
 #' Coerce a testing-capacity input to a capacity-generating [function].
 #'
 #' @details Used by [intervention_opts()] so that users can supply daily test
-#'   capacity as a constant `numeric` scalar, a `function` of time (`t`: days
-#'   since the exposure of the initial cases on day 0), or a `function` of
-#'   current outbreak size (`N`: cumulative cases so far). All three are
-#'   coerced into one canonical form -- a `function(day_seq, N)` returning a
-#'   non-negative capacity (`integer` or `Inf`) for each day in `day_seq` --
-#'   so the rest of the simulation never needs to know which form the user
-#'   supplied.
+#'   capacity as a constant `numeric` scalar or a `function` of time (days
+#'   since the exposure of the initial cases on day 0). Both are coerced into
+#'   one canonical form -- a `function(day_seq)` returning a non-negative
+#'   capacity (`integer` or `Inf`) for each day in `day_seq` -- so the rest of
+#'   the simulation never needs to know which form the user supplied.
 #'
-#'   A `t`-function must be vectorised: it is called once per generation with
+#'   A `function` must be vectorised: it is called once per generation with
 #'   the full `day_seq` (matching the calling convention of
 #'   [as_prob_function()], used for `test_sensitivity`/`symptomatic_traced`),
 #'   not once per day, so e.g. `\(t) ifelse(t < 30, 0, 500)` rather than
 #'   `\(t) if (t < 30) 0 else 500`. This is checked at construction time (like
 #'   [as_prob_function()]) so a non-vectorised function fails immediately in
-#'   [intervention_opts()], rather than deep inside a simulation. An
-#'   `N`-function is evaluated once at the current outbreak size and that
-#'   single value is recycled across `day_seq` (capacity is constant across
-#'   the days being queried, but can change between calls as the outbreak
-#'   grows) -- vectorisation doesn't apply here, since it's always called
-#'   with a scalar `N`.
+#'   [intervention_opts()], rather than deep inside a simulation.
 #'
 #' @param test_capacity An \R object: passed through from the
 #'   `test_capacity` argument of [intervention_opts()].
 #'
-#' @return A `function(day_seq, N)`.
+#' @return A `function(day_seq)`.
 #' @keywords internal
 #' @name as_capacity_function
 as_capacity_function <- function(test_capacity) {
 
   if (is.function(test_capacity)) {
-    test_capacity_arg <- names(formals(test_capacity))
-    if (length(test_capacity_arg) != 1 || !test_capacity_arg %in% c("t", "N")) {
+    if (length(formals(test_capacity)) != 1) {
       stop(
         "The function supplied to `test_capacity` in `intervention_opts()` ",
-        "should have one argument. Either `t` for time-dependence or `N` ",
-        "for outbreak-size-dependence.",
+        "should have one argument: time (e.g. `t`).",
         call. = FALSE
       )
-    }
-    test_capacity_fn <- test_capacity
-    if (test_capacity_arg == "N") {
-      return(function(day_seq, N) {
-        capacity <- test_capacity_fn(N)
-        checkmate::assert_number(capacity, lower = 0)
-        rep(as_capacity_int(capacity), length(day_seq))
-      })
     }
     # time-varying capacity must be vectorised: called once per generation
     # with the whole day range, not once per day (matches as_prob_function());
     # validated eagerly here so a non-vectorised function errors now, not
     # later inside a simulation
     checkmate::assert_numeric(
-      test_capacity_fn(seq(0, 1000, length.out = 1e5)),
+      test_capacity(seq(0, 1000, length.out = 1e5)),
       lower = 0,
       any.missing = FALSE,
       len = 1e5
     )
-    return(function(day_seq, N) {
-      capacity <- test_capacity_fn(day_seq)
+    return(function(day_seq) {
+      capacity <- test_capacity(day_seq)
       checkmate::assert_numeric(
         capacity, lower = 0, any.missing = FALSE, len = length(day_seq)
       )
@@ -253,7 +236,7 @@ as_capacity_function <- function(test_capacity) {
   }
 
   checkmate::assert_number(test_capacity, lower = 0)
-  function(day_seq, N) {
+  function(day_seq) {
     rep(as_capacity_int(test_capacity), length(day_seq))
   }
 }
