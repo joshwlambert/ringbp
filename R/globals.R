@@ -18,8 +18,10 @@ utils::globalVariables(c(
   "isolated_time", # <outbreak_setup>
   "onset", # <outbreak_setup>
   "test_positive", # <outbreak_setup>
-  "traced", # <outbreak_step>
+  "infector_isolation_time", # <outbreak_step>
+  "i.isolated_time", # <outbreak_step>
   "exposure", # <outbreak_step>
+  "traced", # <outbreak_step>
   "infector", # <outbreak_step>
   "new_cases", # <outbreak_step>
   "sampled", # <outbreak_step>
@@ -29,10 +31,11 @@ utils::globalVariables(c(
   "onset", # <outbreak_step>
   "self_isolate", # <outbreak_step>
   "infector_asymptomatic", # <outbreak_step>
+  "notified_before_onset", # <outbreak_step>
   "self_isolation_time", # <outbreak_step>
+  "test_time", # <outbreak_step>
   "test_isolation_time", # <outbreak_step>
   "traced_isolation_time", # <outbreak_step>
-  "infector_isolation_time", # <outbreak_step>
   "test_positive", # <outbreak_step>
   "sampled", # <sample_offspring>
   "rand", # <allocate_tests>
@@ -43,8 +46,6 @@ utils::globalVariables(c(
   "infector_isolation_time", # <sample_testing>
   "i.isolated_time", # <sample_testing>
   "n", # <sample_testing>
-  "tests_remaining", # <sample_testing>
-  "i.tests_remaining", # <sample_testing>
   "is_tested", # <sample_testing>
   "day", # <sample_testing>
   "infected", # <sample_testing>
