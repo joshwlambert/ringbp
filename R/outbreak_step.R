@@ -12,9 +12,10 @@
 #'   `onset_to_isolation`, `latent_period` and `onset_to_self_isolation`
 #' @param event_probs a `list` with class `<ringbp_event_prob_opts>`: the
 #'   event probabilities for the \pkg{ringbp} model, returned by
-#'   [event_prob_opts()]. Contains 6 elements: `asymptomatic`,
+#'   [event_prob_opts()]. Contains 7 elements: `asymptomatic`,
 #'   `presymptomatic_transmission`, `alpha`, `symptomatic_traced`,
-#'   `symptomatic_self_isolate` and `healthcare_seeking`
+#'   `symptomatic_self_isolate`, `healthcare_seeking` and
+#'   `isolation_adherence`
 #' @param interventions a `list` with class `<ringbp_intervention_opts>`:
 #'   the intervention settings for the \pkg{ringbp} model, returned by
 #'   [intervention_opts()]. Contains 4 elements: `quarantine`,
@@ -71,6 +72,13 @@
 #' asymptomatic cases are isolated only via the tracing pathway: by
 #' quarantine when `quarantine` is active, or by a positive test on
 #' notification when `test_traced` is active.
+#'
+#' A case instructed to isolate, after a positive test or via contact tracing
+#' (including quarantine), adheres to isolation with probability
+#' `isolation_adherence` (from [event_prob_opts()]), evaluated at the time
+#' they are instructed to isolate. A non-adherent case is not isolated via
+#' testing or contact tracing, and their contacts are not notified.
+#' Adherence does not apply to self-isolation.
 #'
 #' @importFrom data.table data.table rbindlist fcase fifelse copy
 #' @importFrom stats runif rnbinom rbinom
@@ -337,10 +345,24 @@ outbreak_step <- function(case_data,
   ]
   prob_samples[test_positive == FALSE, test_isolation_time := Inf]
 
+  # isolation adherence: a case instructed to isolate (after a positive test,
+  # or via contact tracing / quarantine) adheres with probability
+  # `isolation_adherence`, evaluated at the time they are instructed to
+  # isolate. A non-adherent case remains in the community, so is not isolated
+  # via testing or tracing and does not notify their contacts. Self-isolation
+  # is voluntary, so adherence does not apply to it.
+  prob_samples[, isolated_time := pmin(test_isolation_time, traced_isolation_time)]
+  prob_samples[
+    is.finite(isolated_time),
+    isolated_time := fifelse(
+      sample_event(event_probs$isolation_adherence(isolated_time)),
+      isolated_time,
+      Inf
+    )
+  ]
+
   # a case is isolated via the earliest pathway that applies to it
-  prob_samples[, isolated_time := pmin(
-    self_isolation_time, test_isolation_time, traced_isolation_time
-  )]
+  prob_samples[, isolated_time := pmin(self_isolation_time, isolated_time)]
 
   # Chop out unneeded sample columns
   prob_samples[
