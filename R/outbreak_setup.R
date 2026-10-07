@@ -69,13 +69,19 @@ outbreak_setup <- function(initial_cases, delays, event_probs, interventions) {
     test_positive = FALSE
   )
 
-  # provisional isolation time for symptomatic index cases: tested on their
-  # onset day and isolated an onset_to_isolation delay later, as if a test
-  # were available and positive; corrected below once test capacity has been
-  # allocated and results drawn
+  # provisional isolation time for symptomatic index cases that seek a test
+  # (with probability `healthcare_seeking`): tested on their onset day and
+  # isolated an onset_to_isolation delay later, as if a test were available
+  # and positive; corrected below once test capacity has been allocated and
+  # results drawn. Index cases that do not seek a test are never isolated, as
+  # they cannot be traced.
   case_data[
     asymptomatic == FALSE & self_isolate == FALSE,
-    isolated_time := onset + delays$onset_to_isolation(.N)
+    isolated_time := fifelse(
+      sample_event(event_probs$healthcare_seeking(onset)),
+      onset + delays$onset_to_isolation(.N),
+      Inf
+    )
   ]
 
   # index cases compete for the same daily test quota as later generations;
