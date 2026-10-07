@@ -70,9 +70,10 @@ Each contact independently becomes an infection with probability equal to
 the corresponding \verb{*_contact_prob_infect}. When all three
 \verb{*_contact_prob_infect} are \code{1} (the default) every contact is an
 infection and the model reduces to the original branching process.
-Uninfected contacts of \emph{symptomatic} infectors are eligible to be tested
-under \code{\link[=intervention_opts]{intervention_opts()}} (see \code{test_capacity}); contacts of
-asymptomatic infectors are never traced.
+Uninfected contacts of \emph{symptomatic} infectors can be traced, and are
+tested when notified if \code{test_traced} is \code{TRUE} in
+\code{\link[=intervention_opts]{intervention_opts()}} (using \code{test_capacity}); contacts of asymptomatic
+infectors are never traced.
 }
 \examples{
 # Negative binomial offspring distributions with:

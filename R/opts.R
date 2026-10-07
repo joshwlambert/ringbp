@@ -10,9 +10,10 @@
 #'   the corresponding `*_contact_prob_infect`. When all three
 #'   `*_contact_prob_infect` are `1` (the default) every contact is an
 #'   infection and the model reduces to the original branching process.
-#'   Uninfected contacts of *symptomatic* infectors are eligible to be tested
-#'   under [intervention_opts()] (see `test_capacity`); contacts of
-#'   asymptomatic infectors are never traced.
+#'   Uninfected contacts of _symptomatic_ infectors can be traced, and are
+#'   tested when notified if `test_traced` is `TRUE` in
+#'   [intervention_opts()] (using `test_capacity`); contacts of asymptomatic
+#'   infectors are never traced.
 #'
 #' @param community a `function`: a random number generating `function`
 #'   that samples from the community (non-isolated) offspring distribution,
