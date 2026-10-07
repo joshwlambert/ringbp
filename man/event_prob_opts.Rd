@@ -9,7 +9,8 @@ event_prob_opts(
   presymptomatic_transmission,
   symptomatic_traced,
   symptomatic_self_isolate = 0,
-  healthcare_seeking = 1
+  healthcare_seeking = 1,
+  isolation_adherence = 1
 )
 }
 \arguments{
@@ -73,6 +74,42 @@ returns a \code{numeric} vector of probabilities of the same length, allowing
 healthcare seeking to vary with time. For example,
 \verb{\\(t) ifelse(t < 30, 0.2, 0.7)} represents healthcare seeking that
 increases from 20\% to 70\% after day 30.}
+
+\item{isolation_adherence}{a \code{numeric} scalar probability (between 0 and 1
+inclusive), or a \code{function} of time returning probabilities in
+\verb{[0, 1]}: proportion of cases instructed to isolate or quarantine that
+adhere. Cases are instructed to:
+\itemize{
+\item isolate after a positive test;
+\item isolate when traced, once notified and symptomatic (if \code{quarantine} is
+\code{FALSE} in \code{\link[=intervention_opts]{intervention_opts()}});
+\item quarantine when traced, on notification (if \code{quarantine} is \code{TRUE} in
+\code{\link[=intervention_opts]{intervention_opts()}}).
+}
+
+Default is 1 (i.e. every case instructed to isolate or quarantine does
+so).
+
+A case that does not adhere remains in the community: they are not
+isolated after a positive test, not isolated or quarantined via contact
+tracing, and their contacts are not notified by contact tracing. Each case
+makes a single choice, so a non-adherent case refuses both isolation and
+quarantine. Non-adherence is the choice not to isolate or quarantine;
+imperfect isolation of cases that do isolate (e.g. transmission within a
+household) is set by the \code{isolated} offspring distribution in
+\code{\link[=offspring_opts]{offspring_opts()}}. Non-adherent cases are still tested, and their
+offspring distribution is unchanged.
+
+\code{isolation_adherence} does not apply to self-isolation (see
+\code{symptomatic_self_isolate}), as cases that self-isolate choose to isolate
+without being instructed to.
+
+A \code{function} accepts a \code{numeric} vector of times (the time the case is
+instructed to isolate or quarantine, in days since the exposure of the
+initial cases on day 0) and returns a \code{numeric} vector of probabilities of the same
+length, allowing adherence to vary with time. For example,
+\verb{\\(t) ifelse(t < 60, 0.9, 0.6)} represents adherence that declines from
+90\% to 60\% after day 60.}
 }
 \value{
 A \code{list} with class \verb{<ringbp_event_prob_opts>}.
@@ -101,5 +138,13 @@ event_prob_opts(
   presymptomatic_transmission = 0.5,
   symptomatic_traced = 0.2,
   healthcare_seeking = 0.6
+)
+
+# 80\% of cases instructed to isolate adhere to isolation
+event_prob_opts(
+  asymptomatic = 0.1,
+  presymptomatic_transmission = 0.5,
+  symptomatic_traced = 0.2,
+  isolation_adherence = 0.8
 )
 }

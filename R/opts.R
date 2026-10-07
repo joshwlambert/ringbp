@@ -248,6 +248,40 @@ delay_opts <- function(incubation_period,
 #'   `\(t) ifelse(t < 30, 0.2, 0.7)` represents healthcare seeking that
 #'   increases from 20% to 70% after day 30.
 #'
+#' @param isolation_adherence a `numeric` scalar probability (between 0 and 1
+#'   inclusive), or a `function` of time returning probabilities in
+#'   `[0, 1]`: proportion of cases instructed to isolate or quarantine that
+#'   adhere. Cases are instructed to:
+#'   * isolate after a positive test;
+#'   * isolate when traced, once notified and symptomatic (if `quarantine` is
+#'     `FALSE` in [intervention_opts()]);
+#'   * quarantine when traced, on notification (if `quarantine` is `TRUE` in
+#'     [intervention_opts()]).
+#'
+#'   Default is 1 (i.e. every case instructed to isolate or quarantine does
+#'   so).
+#'
+#'   A case that does not adhere remains in the community: they are not
+#'   isolated after a positive test, not isolated or quarantined via contact
+#'   tracing, and their contacts are not notified by contact tracing. Each case
+#'   makes a single choice, so a non-adherent case refuses both isolation and
+#'   quarantine. Non-adherence is the choice not to isolate or quarantine;
+#'   imperfect isolation of cases that do isolate (e.g. transmission within a
+#'   household) is set by the `isolated` offspring distribution in
+#'   [offspring_opts()]. Non-adherent cases are still tested, and their
+#'   offspring distribution is unchanged.
+#'
+#'   `isolation_adherence` does not apply to self-isolation (see
+#'   `symptomatic_self_isolate`), as cases that self-isolate choose to isolate
+#'   without being instructed to.
+#'
+#'   A `function` accepts a `numeric` vector of times (the time the case is
+#'   instructed to isolate or quarantine, in days since the exposure of the
+#'   initial cases on day 0) and returns a `numeric` vector of probabilities of the same
+#'   length, allowing adherence to vary with time. For example,
+#'   `\(t) ifelse(t < 60, 0.9, 0.6)` represents adherence that declines from
+#'   90% to 60% after day 60.
+#'
 #' @return A `list` with class `<ringbp_event_prob_opts>`.
 #' @export
 #'
@@ -273,17 +307,27 @@ delay_opts <- function(incubation_period,
 #'   symptomatic_traced = 0.2,
 #'   healthcare_seeking = 0.6
 #' )
+#'
+#' # 80% of cases instructed to isolate adhere to isolation
+#' event_prob_opts(
+#'   asymptomatic = 0.1,
+#'   presymptomatic_transmission = 0.5,
+#'   symptomatic_traced = 0.2,
+#'   isolation_adherence = 0.8
+#' )
 event_prob_opts <- function(asymptomatic,
                             presymptomatic_transmission,
                             symptomatic_traced,
                             symptomatic_self_isolate = 0,
-                            healthcare_seeking = 1) {
+                            healthcare_seeking = 1,
+                            isolation_adherence = 1) {
 
   checkmate::assert_number(asymptomatic, lower = 0, upper = 1)
   checkmate::assert_number(presymptomatic_transmission, lower = 0, upper = 1)
   symptomatic_traced <- as_prob_function(symptomatic_traced)
   checkmate::assert_number(symptomatic_self_isolate, lower = 0, upper = 1)
   healthcare_seeking <- as_prob_function(healthcare_seeking)
+  isolation_adherence <- as_prob_function(isolation_adherence)
 
   # calculate alpha parameter from presymptomatic_transmission
   alpha <- presymptomatic_transmission_to_alpha(
@@ -296,7 +340,8 @@ event_prob_opts <- function(asymptomatic,
     alpha = alpha,
     symptomatic_traced = symptomatic_traced,
     symptomatic_self_isolate = symptomatic_self_isolate,
-    healthcare_seeking = healthcare_seeking
+    healthcare_seeking = healthcare_seeking,
+    isolation_adherence = isolation_adherence
   )
 
   class(opts) <- "ringbp_event_prob_opts"
