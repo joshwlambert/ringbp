@@ -1,3 +1,35 @@
+#' Extend the daily test quota to cover new days
+#'
+#' Shared by [outbreak_setup()] (index cases) and [sample_testing()]
+#'   (later generations). The quota is a single table carried through the
+#'   simulation: days already in it keep their remaining capacity, and only
+#'   days after its last day are added, at full capacity. Carried days are
+#'   never rebuilt, so tests already used on them are never forgotten.
+#'
+#' @param test_quota a `data.table` with columns `day` and
+#'   `tests_remaining`, or `NULL` if no quota exists yet (in which case the
+#'   quota starts from day 0).
+#' @param day_max a `numeric` scalar: the last day the quota must cover.
+#' @param test_capacity a `function(day_seq)`: the capacity-generating
+#'   `function` from [intervention_opts()] (see [as_capacity_function()]).
+#'
+#' @return A new `data.table` with columns `day` and `tests_remaining`,
+#'   covering days `0` to at least `day_max`. It is always a new object (never
+#'   `test_quota` itself), so [allocate_tests()] modifying it by reference
+#'   never alters the quota passed in.
+#' @keywords internal
+extend_test_quota <- function(test_quota, day_max, test_capacity) {
+  first_new_day <- if (is.null(test_quota)) 0L else max(test_quota$day) + 1L
+  if (day_max < first_new_day) {
+    return(data.table::copy(test_quota))
+  }
+  new_days <- first_new_day:day_max
+  rbindlist(list(
+    test_quota,
+    data.table(day = new_days, tests_remaining = test_capacity(new_days))
+  ))
+}
+
 #' Allocate a fixed daily test quota across candidates competing for tests
 #' on the same day
 #'
