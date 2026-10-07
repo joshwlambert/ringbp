@@ -36,8 +36,9 @@ event probabilities for the \pkg{ringbp} model, returned by
 
 \item{interventions}{a \code{list} with class \verb{<ringbp_intervention_opts>}:
 the intervention settings for the \pkg{ringbp} model, returned by
-\code{\link[=intervention_opts]{intervention_opts()}}. Contains 3 elements: \code{quarantine},
-\code{test_sensitivity} and \code{test_capacity}. May also carry a \code{test_quota}
+\code{\link[=intervention_opts]{intervention_opts()}}. Contains 4 elements: \code{quarantine},
+\code{test_sensitivity}, \code{test_capacity} and \code{test_traced}. May also carry a
+\code{test_quota}
 element (a \code{data.table} of remaining capacity by day, carried over from
 a previous call) -- if absent, every day starts at full capacity.}
 
