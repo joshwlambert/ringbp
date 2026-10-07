@@ -109,6 +109,15 @@ offspring_opts <- function(community,
 #' @param onset_to_isolation a `function`: a random number generating
 #'   `function` that accepts a single `integer` argument specifying the
 #'   length of the `function` output.
+#'
+#'   It is the delay from a test to isolation (the time to process the test)
+#'   for a case that tests positive. Symptomatic cases are tested on their
+#'   symptom onset day, so for them it is the delay from symptom onset to
+#'   isolation; traced contacts tested when notified (see `test_traced` in
+#'   [intervention_opts()]) are isolated this delay after notification. The
+#'   delay does not depend on `test_capacity` in [intervention_opts()]:
+#'   limited capacity determines whether a case is tested at all, not how
+#'   long it waits for a result.
 #' @param latent_period a non-negative `numeric` scalar: the minimum time
 #'   between an individual being exposed and becoming infectious. It is a
 #'   population-wide parameter, with no variability between individuals. It

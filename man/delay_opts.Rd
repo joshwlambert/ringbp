@@ -20,7 +20,16 @@ output).}
 
 \item{onset_to_isolation}{a \code{function}: a random number generating
 \code{function} that accepts a single \code{integer} argument specifying the
-length of the \code{function} output.}
+length of the \code{function} output.
+
+It is the delay from a test to isolation (the time to process the test)
+for a case that tests positive. Symptomatic cases are tested on their
+symptom onset day, so for them it is the delay from symptom onset to
+isolation; traced contacts tested when notified (see \code{test_traced} in
+\code{\link[=intervention_opts]{intervention_opts()}}) are isolated this delay after notification. The
+delay does not depend on \code{test_capacity} in \code{\link[=intervention_opts]{intervention_opts()}}:
+limited capacity determines whether a case is tested at all, not how
+long it waits for a result.}
 
 \item{latent_period}{a non-negative \code{numeric} scalar: the minimum time
 between an individual being exposed and becoming infectious. It is a
