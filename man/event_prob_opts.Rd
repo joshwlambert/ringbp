@@ -33,8 +33,11 @@ length, allowing the contact-tracing probability to vary with time. For
 example, \verb{\\(t) ifelse(t < 30, 0, 0.5)} represents a contact-tracing
 programme that activates on day 30 and ascertains 50\% of contacts.
 
-Only contacts whose infector is symptomatic are eligible for tracing
-(see \code{\link[=outbreak_step]{outbreak_step()}} for how isolation times are assigned).}
+Only contacts whose infector is symptomatic are eligible for tracing,
+and only contacts made before the infector is isolated: a contact made
+while the infector is isolated is assumed not to know they are a
+contact of a case, so is never traced (see \code{\link[=outbreak_step]{outbreak_step()}} for how
+isolation times are assigned).}
 
 \item{symptomatic_self_isolate}{a \code{numeric} scalar probability (between 0
 and 1 inclusive): proportion of cases that self-isolate when they become
