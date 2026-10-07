@@ -224,6 +224,30 @@ delay_opts <- function(incubation_period,
 #'   `function` needs to be specified in the `onset_to_self_isolation` argument
 #'   in the [delay_opts()] function, otherwise the [scenario_sim()] will error.
 #'
+#' @param healthcare_seeking a `numeric` scalar probability (between 0 and 1
+#'   inclusive), or a `function` of time returning probabilities in
+#'   `[0, 1]`: proportion of symptomatic cases that do not self-isolate who
+#'   seek a test at symptom onset (e.g. by visiting a healthcare facility or
+#'   testing centre, or by testing at home). Default is 1 (i.e. every
+#'   symptomatic case that does not self-isolate seeks a test).
+#'
+#'   Symptomatic cases that neither self-isolate nor seek a test are not
+#'   tested and are not isolated, unless they are isolated via contact
+#'   tracing. The proportion of all symptomatic cases that seek a test is
+#'   therefore `(1 - symptomatic_self_isolate) * healthcare_seeking`.
+#'
+#'   `healthcare_seeking` applies to cases tested because of their symptoms,
+#'   including index cases and traced cases not notified by contact tracing
+#'   before their symptom onset. It does not apply to traced contacts tested
+#'   when notified (see `test_traced` in [intervention_opts()]).
+#'
+#'   A `function` accepts a `numeric` vector of times (the case's symptom
+#'   onset time in days since the exposure of the initial cases on day 0) and
+#'   returns a `numeric` vector of probabilities of the same length, allowing
+#'   healthcare seeking to vary with time. For example,
+#'   `\(t) ifelse(t < 30, 0.2, 0.7)` represents healthcare seeking that
+#'   increases from 20% to 70% after day 30.
+#'
 #' @return A `list` with class `<ringbp_event_prob_opts>`.
 #' @export
 #'
@@ -241,15 +265,25 @@ delay_opts <- function(incubation_period,
 #'   presymptomatic_transmission = 0.5,
 #'   symptomatic_traced = \(t) ifelse(t < 30, 0, 0.5)
 #' )
+#'
+#' # 60% of symptomatic cases seek a test at symptom onset
+#' event_prob_opts(
+#'   asymptomatic = 0.1,
+#'   presymptomatic_transmission = 0.5,
+#'   symptomatic_traced = 0.2,
+#'   healthcare_seeking = 0.6
+#' )
 event_prob_opts <- function(asymptomatic,
                             presymptomatic_transmission,
                             symptomatic_traced,
-                            symptomatic_self_isolate = 0) {
+                            symptomatic_self_isolate = 0,
+                            healthcare_seeking = 1) {
 
   checkmate::assert_number(asymptomatic, lower = 0, upper = 1)
   checkmate::assert_number(presymptomatic_transmission, lower = 0, upper = 1)
   symptomatic_traced <- as_prob_function(symptomatic_traced)
   checkmate::assert_number(symptomatic_self_isolate, lower = 0, upper = 1)
+  healthcare_seeking <- as_prob_function(healthcare_seeking)
 
   # calculate alpha parameter from presymptomatic_transmission
   alpha <- presymptomatic_transmission_to_alpha(
@@ -261,7 +295,8 @@ event_prob_opts <- function(asymptomatic,
     presymptomatic_transmission = presymptomatic_transmission,
     alpha = alpha,
     symptomatic_traced = symptomatic_traced,
-    symptomatic_self_isolate = symptomatic_self_isolate
+    symptomatic_self_isolate = symptomatic_self_isolate,
+    healthcare_seeking = healthcare_seeking
   )
 
   class(opts) <- "ringbp_event_prob_opts"

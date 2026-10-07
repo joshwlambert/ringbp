@@ -8,7 +8,8 @@ event_prob_opts(
   asymptomatic,
   presymptomatic_transmission,
   symptomatic_traced,
-  symptomatic_self_isolate = 0
+  symptomatic_self_isolate = 0,
+  healthcare_seeking = 1
 )
 }
 \arguments{
@@ -48,6 +49,30 @@ individuals self-isolate).
 If \code{symptomatic_self_isolate} is non-zero a random number generating
 \code{function} needs to be specified in the \code{onset_to_self_isolation} argument
 in the \code{\link[=delay_opts]{delay_opts()}} function, otherwise the \code{\link[=scenario_sim]{scenario_sim()}} will error.}
+
+\item{healthcare_seeking}{a \code{numeric} scalar probability (between 0 and 1
+inclusive), or a \code{function} of time returning probabilities in
+\verb{[0, 1]}: proportion of symptomatic cases that do not self-isolate who
+seek a test at symptom onset (e.g. by visiting a healthcare facility or
+testing centre, or by testing at home). Default is 1 (i.e. every
+symptomatic case that does not self-isolate seeks a test).
+
+Symptomatic cases that neither self-isolate nor seek a test are not
+tested and are not isolated, unless they are isolated via contact
+tracing. The proportion of all symptomatic cases that seek a test is
+therefore \code{(1 - symptomatic_self_isolate) * healthcare_seeking}.
+
+\code{healthcare_seeking} applies to cases tested because of their symptoms,
+including index cases and traced cases not notified by contact tracing
+before their symptom onset. It does not apply to traced contacts tested
+when notified (see \code{test_traced} in \code{\link[=intervention_opts]{intervention_opts()}}).
+
+A \code{function} accepts a \code{numeric} vector of times (the case's symptom
+onset time in days since the exposure of the initial cases on day 0) and
+returns a \code{numeric} vector of probabilities of the same length, allowing
+healthcare seeking to vary with time. For example,
+\verb{\\(t) ifelse(t < 30, 0.2, 0.7)} represents healthcare seeking that
+increases from 20\% to 70\% after day 30.}
 }
 \value{
 A \code{list} with class \verb{<ringbp_event_prob_opts>}.
@@ -68,5 +93,13 @@ event_prob_opts(
   asymptomatic = 0.1,
   presymptomatic_transmission = 0.5,
   symptomatic_traced = \(t) ifelse(t < 30, 0, 0.5)
+)
+
+# 60\% of symptomatic cases seek a test at symptom onset
+event_prob_opts(
+  asymptomatic = 0.1,
+  presymptomatic_transmission = 0.5,
+  symptomatic_traced = 0.2,
+  healthcare_seeking = 0.6
 )
 }
