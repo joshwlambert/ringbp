@@ -17,8 +17,9 @@
 #'   `symptomatic_self_isolate`
 #' @param interventions a `list` with class `<ringbp_intervention_opts>`:
 #'   the intervention settings for the \pkg{ringbp} model, returned by
-#'   [intervention_opts()]. Contains 3 elements: `quarantine`,
-#'   `test_sensitivity` and `test_capacity`. May also carry a `test_quota`
+#'   [intervention_opts()]. Contains 4 elements: `quarantine`,
+#'   `test_sensitivity`, `test_capacity` and `test_traced`. May also carry a
+#'   `test_quota`
 #'   element (a `data.table` of remaining capacity by day, carried over from
 #'   a previous call) -- if absent, every day starts at full capacity.
 #'
@@ -31,31 +32,43 @@
 #'   `symptomatic_self_isolate` (from [event_prob_opts()]), entering isolation
 #'   an `onset_to_self_isolation` delay (from [delay_opts()]) after symptom
 #'   onset. Self-isolating cases are not tested.
-#' * **Testing**: a symptomatic case that does not self-isolate, and is not
-#'   already destined for exposure-based quarantine (see **Tracing** below),
-#'   is a candidate for testing, entering isolation an `onset_to_isolation`
-#'   delay after symptom onset if it is (a) allocated one of the day's
-#'   tests, subject to `test_capacity` (from [intervention_opts()], shared
-#'   with uninfected traced contacts -- see [sample_testing()]), and (b)
-#'   that test returns a positive result, with probability
-#'   `test_sensitivity` (from [intervention_opts()]). Neither a missed
-#'   allocation nor a false-negative result isolates the case via this
-#'   pathway. A case already destined for quarantine is excluded from
-#'   testing entirely, since quarantine isolates it independent of the test
-#'   result -- it does not compete for capacity that gates other
-#'   individuals' isolation.
+#' * **Testing**: a symptomatic case that does not self-isolate, and has not
+#'   been notified by contact tracing before its symptom onset (see
+#'   **Tracing** below), is tested on its onset day. They enters isolation an
+#'   `onset_to_isolation` delay (see [delay_opts()]) after the test if (a) it
+#'   is allocated one of that day's tests, subject to `test_capacity`
+#'   (from [intervention_opts()], shared with traced contacts tested under
+#'   `test_traced` -- see [sample_testing()]), and (b) that test returns a
+#'   positive result, with probability `test_sensitivity` (from
+#'   [intervention_opts()]) evaluated at the test time. Neither a missed
+#'   allocation nor a false-negative result isolates the case via this pathway,
+#'   and the case is not retested.
 #' * **Tracing**: a case whose infector is symptomatic is traced with
-#'   probability `symptomatic_traced` (from [event_prob_opts()]). When
-#'   `quarantine` is active (from [intervention_opts()]) tracing is
-#'   exposure-based: a traced case is isolated when its infector is isolated,
-#'   regardless of its own symptom status, and is excluded from the testing
-#'   pathway above. Without `quarantine`, only a traced symptomatic case is
-#'   isolated, no earlier than its own symptom onset, and remains eligible
-#'   for testing (able to be isolated earlier via a positive test, or as
-#'   confirmation alongside tracing).
+#'   probability `symptomatic_traced` (from [event_prob_opts()]), and is
+#'   notified when its infector is isolated. A case infected while its
+#'   infector is isolated is never traced: it is assumed not to know it is a
+#'   contact of a case (e.g. a household member of a case isolating at
+#'   home). When `quarantine` is active (from [intervention_opts()]) tracing
+#'   is exposure-based: a traced case is isolated when notified, regardless
+#'   of its own symptom status, and is not tested. Without `quarantine`, a
+#'   traced symptomatic case is isolated no earlier than its own symptom
+#'   onset. A traced case not notified by its onset (including one whose
+#'   infector is never isolated) is tested at onset like an untraced case.
+#' * **Contact testing** (only when `test_traced` is `TRUE` in
+#'   [intervention_opts()], which requires `quarantine` to be `FALSE`): a
+#'   traced case not already tested at onset (i.e. one notified before its
+#'   onset, or asymptomatic) is tested when notified, regardless of symptom
+#'   status, subject to the same `test_capacity` and `test_sensitivity`. If
+#'   positive it enters isolation an `onset_to_isolation` delay after
+#'   notification. Uninfected traced contacts are also tested when notified,
+#'   using capacity but with no effect on transmission. Without
+#'   `test_traced`, a traced case notified before its onset is not tested,
+#'   and is isolated at its onset via tracing.
 #'
-#' Self-isolation and testing are symptom-based, so asymptomatic cases are
-#' isolated only via the tracing pathway, and only when `quarantine` is active.
+#' Self-isolation and symptom-driven testing are symptom-based, so
+#' asymptomatic cases are isolated only via the tracing pathway: by
+#' quarantine when `quarantine` is active, or by a positive test on
+#' notification when `test_traced` is active.
 #'
 #' @importFrom data.table data.table rbindlist fcase fifelse copy
 #' @importFrom stats runif rnbinom rbinom
@@ -141,9 +154,20 @@ outbreak_step <- function(case_data,
   # self-present once symptomatic even if tracing fails (see the testing
   # pathway below). Apply the same per-contact tracing draw used for
   # infected contacts (below), using each contact's own exposure time, then
-  # collapse to the per-infector count sample_testing() expects.
+  # collapse to the per-infector count sample_testing() expects. Traced
+  # contacts are only tested when notified if `test_traced` is active; with
+  # quarantine active, traced contacts are quarantined rather than tested,
+  # so uninfected contacts never enter the testing queue. Contacts made
+  # while the infector is isolated are never traced (see the tracing draw
+  # below), so they are dropped before the draw.
+  test_traced <- interventions$test_traced && !interventions$quarantine
   uninfected_dt <- offspring_out$uninfected_contacts
-  if (nrow(uninfected_dt) > 0) {
+  if (nrow(uninfected_dt) > 0 && test_traced) {
+    uninfected_dt[
+      case_data, infector_isolation_time := i.isolated_time,
+      on = c("infector" = "caseid")
+    ]
+    uninfected_dt <- uninfected_dt[exposure < infector_isolation_time]
     uninfected_dt[
       , traced := runif(.N) < event_probs$symptomatic_traced(exposure)
     ]
@@ -208,16 +232,29 @@ outbreak_step <- function(case_data,
     self_isolate := runif(.N) < event_probs$symptomatic_self_isolate
   ]
 
-  # draw a sample for tracing
+  # draw a sample for tracing. A contact made while the infector is isolated
+  # (exposure after the infector's isolation time) is never traced: the
+  # contact is assumed not to know they are a contact of a case (e.g.
+  # household members of a case isolating at home, or staff in an isolation
+  # facility), so they are treated as untraced and isolate only via the
+  # symptom-based pathways
   prob_samples[
-    infector_asymptomatic == FALSE,
+    infector_asymptomatic == FALSE & exposure < infector_isolation_time,
     traced := runif(.N) < event_probs$symptomatic_traced(exposure)
   ]
 
+  # a traced case is notified when its infector is isolated; one notified
+  # before its own symptom onset does not seek a test at onset (see the
+  # testing pathway below). A traced case whose infector is isolated after
+  # its onset, or never, has not been notified by onset.
+  prob_samples[, notified_before_onset := traced & infector_isolation_time < onset]
+
   # isolation time is the earliest of three pathways; each pathway holds the
-  # `Inf` placeholder for cases it does not apply to
+  # `Inf` placeholder for cases it does not apply to. `test_time` is the time
+  # a case is tested (`Inf` if not a test candidate).
   prob_samples[, `:=`(
     self_isolation_time = Inf,
+    test_time = Inf,
     test_isolation_time = Inf,
     traced_isolation_time = Inf
   )]
@@ -229,19 +266,35 @@ outbreak_step <- function(case_data,
     self_isolation_time := onset + delays$onset_to_self_isolation(.N)
   ]
 
-  # testing pathway, part 1: provisional isolation time for symptomatic,
-  # non-self-isolating cases, as if a test were available and positive. This
-  # is the day sample_testing() debits the test quota against; it is
-  # corrected below once we know which cases were actually allocated a test
-  # and which of those tested positive. Cases already destined for
-  # exposure-based quarantine (quarantine active and traced -- see the
-  # tracing pathway below) are excluded: quarantine isolates independent of
-  # infection status, so these cases have no bearing on a test result and
-  # should not compete for capacity that gates other individuals' isolation.
+  # testing pathway, part 1: symptomatic, non-self-isolating cases that have
+  # not been notified by their onset seek a test on their onset day; this is
+  # the day sample_testing() debits the test quota against. A case notified
+  # before onset does not: with quarantine it is isolated when notified, and
+  # without quarantine it is isolated at onset via tracing, so a test would
+  # not change its isolation time. The provisional isolation time is the
+  # test time plus an `onset_to_isolation` delay (the time to process the
+  # test), as if a test were available and positive; it is corrected below
+  # once we know which cases were actually allocated a test and which of
+  # those tested positive.
   prob_samples[
-    asymptomatic == FALSE & self_isolate == FALSE &
-      !(interventions$quarantine & traced),
-    test_isolation_time := onset + delays$onset_to_isolation(.N)
+    asymptomatic == FALSE & self_isolate == FALSE & !notified_before_onset,
+    test_time := onset
+  ]
+  # testing pathway, contact testing: with `test_traced` active, a traced
+  # case is tested when notified (its infector's isolation time), regardless
+  # of symptom status, unless it was already tested at onset above. This
+  # covers traced cases notified before their onset and asymptomatic traced
+  # cases (notification is independent of whether they later self-isolate).
+  if (test_traced) {
+    prob_samples[
+      traced & is.finite(infector_isolation_time) &
+        (asymptomatic | notified_before_onset),
+      test_time := infector_isolation_time
+    ]
+  }
+  prob_samples[
+    is.finite(test_time),
+    test_isolation_time := test_time + delays$onset_to_isolation(.N)
   ]
 
   # tracing pathway: when quarantine is active it is exposure-based, so every
@@ -269,13 +322,12 @@ outbreak_step <- function(case_data,
     prob_samples = prob_samples,
     uninfected_contacts = uninfected_contacts,
     case_data = case_data,
-    interventions = interventions,
-    N = nrow(case_data) + nrow(prob_samples)
+    interventions = interventions
   )
   test_quota <- allocation$test_quota
   prob_samples[
     allocation$tested,
-    test_positive := runif(.N) <= interventions$test_sensitivity(onset)
+    test_positive := runif(.N) <= interventions$test_sensitivity(test_time)
   ]
   prob_samples[test_positive == FALSE, test_isolation_time := Inf]
 
@@ -287,8 +339,8 @@ outbreak_step <- function(case_data,
   # Chop out unneeded sample columns
   prob_samples[
     , c("infector_isolation_time", "infector_asymptomatic", "test_positive",
-        "self_isolation_time", "test_isolation_time",
-        "traced_isolation_time") := NULL
+        "notified_before_onset", "self_isolation_time", "test_time",
+        "test_isolation_time", "traced_isolation_time") := NULL
   ]
   # Set new case ids for new people
   prob_samples[, caseid := case_data[.N, caseid] + seq_len(.N)]
