@@ -158,7 +158,9 @@ sample_offspring <- function(case_data, offspring, alpha, latent_period) {
   # exposure time, before aggregating to a per-infector count: only a traced
   # uninfected contact has a route into the testing queue (see
   # outbreak_step.R) -- an untraced one has no notification prompting them
-  # to seek a test, so never competes for capacity.
+  # to seek a test, so never competes for capacity. Contacts made in the
+  # isolated state are included here but are never traced, so the caller
+  # drops them before the tracing draw.
   uninfected_contacts <- data.table(
     infector = as.numeric(c(
       names(community_exposure)[!community_infected],
