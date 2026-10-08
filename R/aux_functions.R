@@ -251,5 +251,6 @@ sample_event <- function(prob) {
   runif(length(prob)) < prob
 }
 
-# round a single non-negative capacity value to an integer, preserving Inf
-as_capacity_int <- function(x) if (is.finite(x)) as.integer(x) else Inf
+# round a single non-negative capacity value down to a whole number of tests,
+# preserving Inf; returned as a double so the test quota is always numeric
+as_capacity_int <- function(x) if (is.finite(x)) floor(x) else Inf
