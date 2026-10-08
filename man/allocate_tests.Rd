@@ -13,7 +13,11 @@ on, one element per candidate.}
 
 \item{test_quota}{a \code{data.table} with columns \code{day} and
 \code{tests_remaining}: the available daily quota. \emph{\strong{Note}} modified by
-reference to debit the tests allocated, see \code{\link[data.table:set]{data.table::set()}}.}
+reference to debit every candidate seeking a test, see
+\code{\link[data.table:set]{data.table::set()}}. Every candidate is debited, whether or not they are
+allocated a test, so \code{tests_remaining} is negative when more candidates
+seek a test on a day than there is capacity: the negative value is the
+number of additional tests needed that day (the unmet demand).}
 }
 \value{
 A \code{logical} vector the same length as \code{day}, \code{TRUE} iff that

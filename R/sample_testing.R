@@ -42,7 +42,11 @@ extend_test_quota <- function(test_quota, day_max, test_capacity) {
 #'   on, one element per candidate.
 #' @param test_quota a `data.table` with columns `day` and
 #'   `tests_remaining`: the available daily quota. ***Note*** modified by
-#'   reference to debit the tests allocated, see [data.table::set()].
+#'   reference to debit every candidate seeking a test, see
+#'   [data.table::set()]. Every candidate is debited, whether or not they are
+#'   allocated a test, so `tests_remaining` is negative when more candidates
+#'   seek a test on a day than there is capacity: the negative value is the
+#'   number of additional tests needed that day (the unmet demand).
 #'
 #' @return A `logical` vector the same length as `day`, `TRUE` iff that
 #'   candidate was allocated a test.
@@ -62,13 +66,16 @@ allocate_tests <- function(day, test_quota) {
     day = day, orig_idx = seq_along(day), rand = runif(length(day))
   )
   data.table::setorder(eligible, day, rand)
-  eligible[test_quota, on = "day", quota := i.tests_remaining]
+  # tests can only be allocated from a day's remaining positive capacity
+  eligible[test_quota, on = "day", quota := pmax(0, i.tests_remaining)]
   eligible[, is_tested := seq_len(.N) <= quota, by = day]
 
-  # debit the quota by the number of tests used on each day
-  tests_used <- eligible[is_tested == TRUE, .N, by = day]
+  # debit the quota by the number of candidates seeking a test on each day,
+  # whether or not they were allocated one, so the quota goes negative when
+  # demand exceeds capacity (recording the unmet demand for tests)
+  tests_sought <- eligible[, .N, by = day]
   test_quota[
-    tests_used, on = "day", tests_remaining := pmax(0, tests_remaining - i.N)
+    tests_sought, on = "day", tests_remaining := tests_remaining - i.N
   ]
 
   is_tested <- logical(length(day))
@@ -104,7 +111,8 @@ allocate_tests <- function(day, test_quota) {
 #'      iff that case was allocated a test this generation.
 #'   * `test_quota`: a two-column `data.table` (`day`, `tests_remaining`)
 #'      with remaining test capacity by day, to carry over to the next
-#'      generation.
+#'      generation. Negative values are the number of additional tests that
+#'      would have been needed that day (see [allocate_tests()]).
 #' @autoglobal
 #' @keywords internal
 sample_testing <- function(prob_samples,

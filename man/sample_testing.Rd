@@ -35,7 +35,8 @@ A \code{list} with two elements:
 iff that case was allocated a test this generation.
 \item \code{test_quota}: a two-column \code{data.table} (\code{day}, \code{tests_remaining})
 with remaining test capacity by day, to carry over to the next
-generation.
+generation. Negative values are the number of additional tests that
+would have been needed that day (see \code{\link[=allocate_tests]{allocate_tests()}}).
 }
 }
 \description{
