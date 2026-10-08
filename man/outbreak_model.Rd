@@ -47,7 +47,7 @@ a previous call) -- if absent, every day starts at full capacity.}
 options for the \pkg{ringbp} model, returned by \code{\link[=sim_opts]{sim_opts()}}}
 }
 \value{
-A \code{list} with 2 \code{data.table} elements:
+A \code{list} with 3 \code{data.table} elements:
 \enumerate{
 \item \verb{$outbreak_ts}: the results for a single outbreak simulation. The
 \code{data.table} has columns:
@@ -62,6 +62,20 @@ A \code{list} with 2 \code{data.table} elements:
 \item \code{effective_r0}: the effective reproduction rate for the
 whole simulation (\code{numeric})
 \item \code{cases_per_gen}: the cases per generation (\code{list})
+}
+\item \verb{$test_quota}: the daily testing capacity remaining at the end of the
+simulation, from day 0 to \code{cap_max_days} (see \code{\link[=sim_opts]{sim_opts()}}). The
+\code{data.table} has columns:
+\itemize{
+\item \code{day}: the day in the simulation (\code{integer})
+\item \code{tests_remaining}: the number of tests remaining that day
+(\code{numeric}). A positive value is a surplus of unused tests, a
+negative value is a shortfall (the number of additional tests that
+would have been needed for everyone seeking a test that day to
+receive one), and \code{Inf} is unlimited capacity (\code{test_capacity = Inf}
+in \code{\link[=intervention_opts]{intervention_opts()}}). Days not reached by the simulation (after
+it stops, when the outbreak goes extinct or reaches \code{cap_cases}, see
+\code{\link[=sim_opts]{sim_opts()}}) are \code{NA}.
 }
 }
 

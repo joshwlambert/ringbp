@@ -5,7 +5,7 @@
 #' @param sim a `list` with class `<ringbp_sim_opts>`: the simulation control
 #'   options for the \pkg{ringbp} model, returned by [sim_opts()]
 #'
-#' @return A `list` with 2 `data.table` elements:
+#' @return A `list` with 3 `data.table` elements:
 #' 1. `$outbreak_ts`: the results for a single outbreak simulation. The
 #'    `data.table` has columns:
 #'    * `week`: the week in the simulation (`integer`)
@@ -16,6 +16,18 @@
 #'    * `effective_r0`: the effective reproduction rate for the
 #'    whole simulation (`numeric`)
 #'    * `cases_per_gen`: the cases per generation (`list`)
+#' 3. `$test_quota`: the daily testing capacity remaining at the end of the
+#'    simulation, from day 0 to `cap_max_days` (see [sim_opts()]). The
+#'    `data.table` has columns:
+#'    * `day`: the day in the simulation (`integer`)
+#'    * `tests_remaining`: the number of tests remaining that day
+#'      (`numeric`). A positive value is a surplus of unused tests, a
+#'      negative value is a shortfall (the number of additional tests that
+#'      would have been needed for everyone seeking a test that day to
+#'      receive one), and `Inf` is unlimited capacity (`test_capacity = Inf`
+#'      in [intervention_opts()]). Days not reached by the simulation (after
+#'      it stops, when the outbreak goes extinct or reaches `cap_cases`, see
+#'      [sim_opts()]) are `NA`.
 #'
 #' The `$outbreak_ts` element also carries an `extinct` attribute: a `logical`
 #' recording whether the outbreak went extinct. See [control] functions for
@@ -155,9 +167,17 @@ outbreak_model <- function(initial_cases,
     cases_per_gen = list(cases_in_gen_vect)
   )
 
+  # daily test surplus (positive) or shortfall (negative) from day zero to
+  # cap_max_days; days not reached by the simulation are NA (not simulated)
+  test_quota <- data.table(day = 0:sim$cap_max_days)
+  test_quota[
+    interventions$test_quota, on = "day", tests_remaining := i.tests_remaining
+  ]
+
   # return
   list(
     outbreak_ts = weekly_cases[],
-    outbreak_stats = outbreak_stats
+    outbreak_stats = outbreak_stats,
+    test_quota = test_quota
   )
 }

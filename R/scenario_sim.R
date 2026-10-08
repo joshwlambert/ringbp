@@ -6,7 +6,7 @@
 #' @inheritParams outbreak_model
 #'
 #' @importFrom data.table rbindlist setattr
-#' @return A `list` with 2 `data.table` elements:
+#' @return A `list` with 3 `data.table` elements:
 #' 1. `$outbreak_ts`: the results for multiple simulations using the same
 #'    set of parameters. The `data.table` has columns:
 #'    * `sim`: the simulation replicate index (`integer`)
@@ -19,6 +19,19 @@
 #'    * `effective_r0`: the effective reproduction rate for the whole
 #'      simulation (`numeric`)
 #'    * `cases_per_gen`: the cases per generation (`list`)
+#' 3. `$test_quota`: the daily testing capacity remaining at the end of each
+#'    outbreak simulation replicate, from day 0 to `cap_max_days` (see
+#'    [sim_opts()]). The `data.table` has columns:
+#'    * `sim`: the simulation replicate index (`integer`)
+#'    * `day`: the day in the simulation (`integer`)
+#'    * `tests_remaining`: the number of tests remaining that day
+#'      (`numeric`). A positive value is a surplus of unused tests, a
+#'      negative value is a shortfall (the number of additional tests that
+#'      would have been needed for everyone seeking a test that day to
+#'      receive one), and `Inf` is unlimited capacity (`test_capacity = Inf`
+#'      in [intervention_opts()]). Days not reached by the simulation (after
+#'      it stops, when the outbreak goes extinct or reaches `cap_cases`, see
+#'      [sim_opts()]) are `NA`.
 #'
 #' The `$outbreak_ts` element also carries two attributes used by
 #' [extinct_prob()] and [detect_extinct()]: `extinct`, a `logical` vector
@@ -93,6 +106,7 @@ scenario_sim <- function(n,
 
   outbreak_ts <- lapply(res, `[[`, "outbreak_ts")
   outbreak_stats <- lapply(res, `[[`, "outbreak_stats")
+  test_quota <- lapply(res, `[[`, "test_quota")
 
   extinct <- vapply(
     outbreak_ts, attr, FUN.VALUE = logical(1), which = "extinct", exact = TRUE
@@ -101,12 +115,14 @@ scenario_sim <- function(n,
   # bind output together and add simulation index
   outbreak_ts <- data.table::rbindlist(outbreak_ts, idcol = "sim")
   outbreak_stats <- data.table::rbindlist(outbreak_stats, idcol = "sim")
+  test_quota <- data.table::rbindlist(test_quota, idcol = "sim")
 
   setattr(outbreak_ts, name = "cap_cases", value = sim$cap_cases)
   setattr(outbreak_ts, name = "extinct", value = extinct)
 
   list(
     outbreak_ts = outbreak_ts,
-    outbreak_stats = outbreak_stats
+    outbreak_stats = outbreak_stats,
+    test_quota = test_quota
   )
 }
