@@ -90,7 +90,8 @@
 #'   generation
 #'   4. `$test_quota`: a `data.table` (`day`, `tests_remaining`) with the
 #'   remaining test capacity by day, to pass to the next call as
-#'   `interventions$test_quota`
+#'   `interventions$test_quota`. Negative values are the number of
+#'   additional tests that would have been needed that day
 #' @autoglobal
 #' @export
 #'

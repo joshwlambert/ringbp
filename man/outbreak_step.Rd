@@ -44,7 +44,8 @@ A \code{list} with four elements:
 generation
 \item \verb{$test_quota}: a \code{data.table} (\code{day}, \code{tests_remaining}) with the
 remaining test capacity by day, to pass to the next call as
-\code{interventions$test_quota}
+\code{interventions$test_quota}. Negative values are the number of
+additional tests that would have been needed that day
 }
 }
 \description{

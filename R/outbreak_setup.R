@@ -19,7 +19,8 @@
 #'
 #' The returned `data.table` also carries a `test_quota` attribute: a
 #' `data.table` (`day`, `tests_remaining`) with the test capacity remaining
-#' after index-case testing, by day. Pass it on as
+#' after index-case testing, by day. Negative values are the number of
+#' additional tests that would have been needed that day. Pass it on as
 #' `interventions$test_quota` before the first [outbreak_step()] call so
 #' capacity already used on index cases carries over (see [outbreak_model()]).
 #' @autoglobal
