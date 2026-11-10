@@ -7,12 +7,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>"
-)
-```
+
 
 This vignette demonstrates how to run an analysis using the `{ringbp}` simulation across multiple scenarios.
 
@@ -20,9 +15,11 @@ This vignette demonstrates how to run an analysis using the `{ringbp}` simulatio
 The functionality included in this vignette was previously in the `parameter_sweep()` function in `{ringbp}` <= v0.1.2. This function has been removed as it is preferred to demonstrate the functionality but allow users the flexibility and control to run scenarios in whichever way they choose.
 :::
 
-```{r setup}
+
+``` r
 library(ringbp)
 library(data.table)
+#> Warning: package 'data.table' was built under R version 4.4.3
 ```
 
 The `scenario_sim()` function is the core function to run outbreak simulations using `{ringbp}`, because it allows running the `outbreak_model()` over multiple replicates. 
@@ -33,7 +30,8 @@ The first step to construct a `data.frame` (in this example we will use a `data.
 
 Parameters that are grouped are put into a nested `data.table` to make sure they are coupled and combinations of these parameters are not mixed. See `delay_group` below for an example of this.
 
-```{r}
+
+``` r
 # Put parameters that are grouped by disease into this data.table
 scenarios <- data.table(
   expand.grid(
@@ -61,7 +59,8 @@ scenarios <- data.table(
 
 To unnest the `data.table` in order to sweep across the scenarios, a few data manipulation steps are required:
 
-```{r}
+
+``` r
 list_cols <- grep("_group", colnames(scenarios), value = TRUE)
 non_list_cols <- setdiff(colnames(scenarios), list_cols)
 scenarios <- scenarios[, rbindlist(delay_group), by = c(non_list_cols)]
@@ -69,7 +68,8 @@ scenarios <- scenarios[, rbindlist(delay_group), by = c(non_list_cols)]
 
 Lastly in setting up the parameter grid we add a column called `scenario` which is numbered 1 to the total number of scenarios; and we add the incubation period to the parameter grid.
 
-```{r}
+
+``` r
 scenarios[, scenario :=  1:.N]
 incub <- \(n) rweibull(n = n, shape = 1.65, scale = 4.28)
 scenarios[, incubation_period := rep(list(incub), .N)]
@@ -79,13 +79,15 @@ scenarios[, incubation_period := rep(list(incub), .N)]
 
 Before we run `scenario_sim()` across each parameter set, we split the scenarios into a list. This makes it easy to loop over the resulting list using R functions like `lapply()`. 
 
-```{r}
+
+``` r
 scenario_sims <- scenarios[, list(data = list(.SD)), by = scenario]
 ```
 
 For this example we will run 3 replicates for each parameter set. The simulation model is stochastic so by running multiple replicates for each, we can understand the variance within scenarios. For a scientifically robust analysis, the number of replicates should be much higher (e.g. 100-1000).
 
-```{r}
+
+``` r
 n <- 3
 res <- lapply(scenario_sims$data, \(x, n) {
   scenario_sim(
@@ -112,19 +114,98 @@ res <- lapply(scenario_sims$data, \(x, n) {
 )
 ```
 
-The output of this parameter sweep is a list with one element per scenario. Each element is the output of `scenario_sim()`, which is itself a `list` of two `data.table`s (`outbreak_ts` and `outbreak_stats`). To give an idea of what the output looks like we show the first 3 scenarios (there are `r length(res)` in total). See `?scenario_sim` for more information on the contents of these outputs.
+The output of this parameter sweep is a list with one element per scenario. Each element is the output of `scenario_sim()`, which is itself a `list` of two `data.table`s (`outbreak_ts` and `outbreak_stats`). To give an idea of what the output looks like we show the first 3 scenarios (there are 160 in total). See `?scenario_sim` for more information on the contents of these outputs.
 
-```{r}
+
+``` r
 head(res, 3)
+#> [[1]]
+#> $outbreak_ts
+#>        sim  week weekly_cases cumulative
+#>      <int> <int>        <int>      <int>
+#>   1:     1     0            9          9
+#>   2:     1     1           10         19
+#>   3:     1     2           18         37
+#>   4:     1     3            6         43
+#>   5:     1     4            0         43
+#>  ---                                    
+#> 152:     3    47            0          5
+#> 153:     3    48            0          5
+#> 154:     3    49            0          5
+#> 155:     3    50            0          5
+#> 156:     3    51            0          5
+#> 
+#> $outbreak_stats
+#>      sim effective_r0             cases_per_gen
+#>    <int>        <num>                    <list>
+#> 1:     1     1.065657          4, 6,22, 5, 1, 0
+#> 2:     2     1.259590  9, 6,18,15, 7,11,...[32]
+#> 3:     3     0.000000                         0
+#> 
+#> attr(,"class")
+#> [1] "ringbp"
+#> 
+#> [[2]]
+#> $outbreak_ts
+#>        sim  week weekly_cases cumulative
+#>      <int> <int>        <int>      <int>
+#>   1:     1     0            4          4
+#>   2:     1     1            1          5
+#>   3:     1     2            0          5
+#>   4:     1     3            0          5
+#>   5:     1     4            0          5
+#>  ---                                    
+#> 152:     3    47            0         10
+#> 153:     3    48            0         10
+#> 154:     3    49            0         10
+#> 155:     3    50            0         10
+#> 156:     3    51            0         10
+#> 
+#> $outbreak_stats
+#>      sim effective_r0 cases_per_gen
+#>    <int>        <num>        <list>
+#> 1:     1    0.0000000             0
+#> 2:     2    0.0000000             0
+#> 3:     3    0.6333333         2,3,0
+#> 
+#> attr(,"class")
+#> [1] "ringbp"
+#> 
+#> [[3]]
+#> $outbreak_ts
+#>        sim  week weekly_cases cumulative
+#>      <int> <int>        <int>      <int>
+#>   1:     1     0            4          4
+#>   2:     1     1            5          9
+#>   3:     1     2            5         14
+#>   4:     1     3           12         26
+#>   5:     1     4           16         42
+#>  ---                                    
+#> 152:     3    47            0          6
+#> 153:     3    48            0          6
+#> 154:     3    49            0          6
+#> 155:     3    50            0          6
+#> 156:     3    51            0          6
+#> 
+#> $outbreak_stats
+#>      sim effective_r0       cases_per_gen
+#>    <int>        <num>              <list>
+#> 1:     1    1.3453560 4,2,9,3,5,8,...[36]
+#> 2:     2    0.3111111               3,1,0
+#> 3:     3    0.1000000                 1,0
+#> 
+#> attr(,"class")
+#> [1] "ringbp"
 ```
 
 ## Storing simulations with scenarios
 
 In the previous example we constructed the parameter grid and then ran the parameter sweep storing the simulated outbreaks in a separate object. It can be useful to keep the simulated output together with the parameter grid to be able to check which parameters correspond to which simulated outbreak.
 
-In this example we run the same scenario parameter sweep as before (again with `r n` replicates), but store the simulated outbreak results in the same object as the list of scenarios. We append the simulation results to the `scenario_sims` `data.table` and assign them to the `sims` column.
+In this example we run the same scenario parameter sweep as before (again with 3 replicates), but store the simulated outbreak results in the same object as the list of scenarios. We append the simulation results to the `scenario_sims` `data.table` and assign them to the `sims` column.
 
-```{r}
+
+``` r
 scenario_sims[, sims := lapply(data, \(x, n) {
   scenario_sim(
     n = n,
@@ -149,15 +230,138 @@ scenario_sims[, sims := lapply(data, \(x, n) {
   n = n
 )]
 scenario_sims
+#>      scenario               data        sims
+#>         <int>             <list>      <list>
+#>   1:        1 <data.table[1x14]> <ringbp[2]>
+#>   2:        2 <data.table[1x14]> <ringbp[2]>
+#>   3:        3 <data.table[1x14]> <ringbp[2]>
+#>   4:        4 <data.table[1x14]> <ringbp[2]>
+#>   5:        5 <data.table[1x14]> <ringbp[2]>
+#>  ---                                        
+#> 156:      156 <data.table[1x14]> <ringbp[2]>
+#> 157:      157 <data.table[1x14]> <ringbp[2]>
+#> 158:      158 <data.table[1x14]> <ringbp[2]>
+#> 159:      159 <data.table[1x14]> <ringbp[2]>
+#> 160:      160 <data.table[1x14]> <ringbp[2]>
 head(scenario_sims$data, 3)
+#> [[1]]
+#>    r0_community r0_isolated disp_community disp_isolated prop_presymptomatic
+#>           <num>       <num>          <num>         <num>               <num>
+#> 1:          1.1           0           0.16             1                0.01
+#>    prop_asymptomatic prop_ascertain initial_cases quarantine cap_max_days
+#>                <num>          <num>         <num>     <lgcl>        <num>
+#> 1:                 0              0             5      FALSE          364
+#>    cap_cases  delay onset_to_isolation incubation_period
+#>        <num> <char>             <list>            <list>
+#> 1:      5000   SARS      <function[1]>     <function[1]>
+#> 
+#> [[2]]
+#>    r0_community r0_isolated disp_community disp_isolated prop_presymptomatic
+#>           <num>       <num>          <num>         <num>               <num>
+#> 1:          1.1           0           0.16             1                0.01
+#>    prop_asymptomatic prop_ascertain initial_cases quarantine cap_max_days
+#>                <num>          <num>         <num>     <lgcl>        <num>
+#> 1:                 0              0             5      FALSE          364
+#>    cap_cases  delay onset_to_isolation incubation_period
+#>        <num> <char>             <list>            <list>
+#> 1:      5000  Wuhan      <function[1]>     <function[1]>
+#> 
+#> [[3]]
+#>    r0_community r0_isolated disp_community disp_isolated prop_presymptomatic
+#>           <num>       <num>          <num>         <num>               <num>
+#> 1:          1.5           0           0.16             1                0.01
+#>    prop_asymptomatic prop_ascertain initial_cases quarantine cap_max_days
+#>                <num>          <num>         <num>     <lgcl>        <num>
+#> 1:                 0              0             5      FALSE          364
+#>    cap_cases  delay onset_to_isolation incubation_period
+#>        <num> <char>             <list>            <list>
+#> 1:      5000   SARS      <function[1]>     <function[1]>
 head(scenario_sims$sims, 3)
+#> [[1]]
+#> $outbreak_ts
+#>        sim  week weekly_cases cumulative
+#>      <int> <int>        <int>      <int>
+#>   1:     1     0            5          5
+#>   2:     1     1            0          5
+#>   3:     1     2            0          5
+#>   4:     1     3            0          5
+#>   5:     1     4            0          5
+#>  ---                                    
+#> 152:     3    47            0         21
+#> 153:     3    48            0         21
+#> 154:     3    49            0         21
+#> 155:     3    50            0         21
+#> 156:     3    51            0         21
+#> 
+#> $outbreak_stats
+#>      sim effective_r0             cases_per_gen
+#>    <int>        <num>                    <list>
+#> 1:     1     0.000000                         0
+#> 2:     2     1.190539 23,24, 4, 7, 5, 5,...[22]
+#> 3:     3     0.706250                   8,5,3,0
+#> 
+#> attr(,"class")
+#> [1] "ringbp"
+#> 
+#> [[2]]
+#> $outbreak_ts
+#>        sim  week weekly_cases cumulative
+#>      <int> <int>        <int>      <int>
+#>   1:     1     0            5          5
+#>   2:     1     1            1          6
+#>   3:     1     2            1          7
+#>   4:     1     3            0          7
+#>   5:     1     4            0          7
+#>  ---                                    
+#> 152:     3    47            0         10
+#> 153:     3    48            0         10
+#> 154:     3    49            0         10
+#> 155:     3    50            0         10
+#> 156:     3    51            0         10
+#> 
+#> $outbreak_stats
+#>      sim effective_r0             cases_per_gen
+#>    <int>        <num>                    <list>
+#> 1:     1    0.2000000                       2,0
+#> 2:     2    1.1438884 12,19,16,20,33,49,...[17]
+#> 3:     3    0.4222222                     3,2,0
+#> 
+#> attr(,"class")
+#> [1] "ringbp"
+#> 
+#> [[3]]
+#> $outbreak_ts
+#>        sim  week weekly_cases cumulative
+#>      <int> <int>        <int>      <int>
+#>   1:     1     0            5          5
+#>   2:     1     1            0          5
+#>   3:     1     2            0          5
+#>   4:     1     3            0          5
+#>   5:     1     4            0          5
+#>  ---                                    
+#> 152:     3    47            0       5027
+#> 153:     3    48            0       5027
+#> 154:     3    49            0       5027
+#> 155:     3    50            0       5027
+#> 156:     3    51            0       5027
+#> 
+#> $outbreak_stats
+#>      sim effective_r0             cases_per_gen
+#>    <int>        <num>                    <list>
+#> 1:     1     0.000000                         0
+#> 2:     2     1.351604  4,15,28,66,86,89,...[23]
+#> 3:     3     1.395256  6, 2, 8,13,20,38,...[21]
+#> 
+#> attr(,"class")
+#> [1] "ringbp"
 ```
 
 ## Running scenarios in parallel
 
 Finally, we demonstrate how the above example can be easily run in parallel using the [`{future}` framework](https://www.futureverse.org/). We load the `{future}` and `{future.apply}` R packages for this.
 
-```{r}
+
+``` r
 library(future)
 library(future.apply)
 ```
@@ -166,13 +370,15 @@ We can replace the `lapply()` with the `future.apply::future_lapply()` function 
 
 Here we show how to run the analysis on 2 separate R sessions running in the background.
 
-```{r, eval=FALSE}
+
+``` r
 future::plan("multisession", workers = 2)
 ```
 
 Now we re-run the parameter sweep with parallelisation.
 
-```{r, eval=FALSE}
+
+``` r
 scenario_sims[, sims := future_lapply(data, \(x, n) {
   scenario_sim(
     n = n,
